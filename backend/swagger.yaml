@@ -1,19 +1,17 @@
 openapi: 3.0.0
 info:
   title: API Bibliothèque UHA
-  description: API de gestion pour le projet de bibliothèque universitaire.
+  description: API de gestion avec authentification par Magic Link (Email uniquement).
   version: 1.0.0
 
-# 1. Définition des Serveurs (Optionnel mais pratique)
 servers:
   - url: http://localhost:5000
     description: Serveur de développement local
 
-# 2. Définition des Routes (Paths)
 paths:
-  /auth/login:
+  /auth/register:
     post:
-      summary: Connexion de l'utilisateur
+      summary: Inscription d'un nouvel utilisateur
       tags: [Authentification]
       requestBody:
         required: true
@@ -21,18 +19,36 @@ paths:
           application/json:
             schema:
               type: object
+              required: [email, nom, prenom]
               properties:
-                email: {type: string, example: "etudiant@uha.fr"}
-                password: {type: string, example: "123456"}
+                email: { type: string, example: "etudiant@uha.fr" }
+                nom: { type: string, example: "Dupont" }
+                prenom: { type: string, example: "Jean" }
+                role: { type: string, enum: [ETUDIANT, ENSEIGNANT, BIBLIOTHECAIRE] }
+      responses:
+        '201':
+          description: Utilisateur créé (statut ACTIF par défaut)
+        '400':
+          description: Erreur lors de l'inscription
+
+  /auth/login:
+    post:
+      summary: Connexion par Email (Magic Link)
+      tags: [Authentification]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, example: "etudiant@uha.fr" }
       responses:
         '200':
-          description: Connexion réussie - Renvoie les infos et le rôle
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Utilisateur'
+          description: Email de connexion envoyé
         '401':
-          description: Identifiants incorrects
+          description: Erreur d'envoi
 
   /livres:
     get:
@@ -50,72 +66,50 @@ paths:
 
   /emprunts:
     get:
-      summary: Liste les emprunts (Filtre possible par utilisateur)
+      summary: Liste les emprunts
       tags: [Emprunts]
       parameters:
         - name: utilisateurId
           in: query
-          schema: {type: integer}
+          schema: { type: string, format: uuid }
       responses:
         '200':
           description: Succès
-    post:
-      summary: Créer un nouvel emprunt (Réservé Bibliothécaire)
-      tags: [Emprunts]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                utilisateurId: {type: integer}
-                exemplaireId: {type: integer}
-      responses:
-        '201':
-          description: Emprunt créé avec succès
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Emprunt'
 
-# 3. Définition des Modèles (Components)
 components:
   schemas:
     Utilisateur:
       type: object
       properties:
-        id: {type: integer}
-        nom: {type: string}
-        prenom: {type: string}
-        email: {type: string}
-        role: 
-          type: string
-          enum: [ETUDIANT, ENSEIGNANT, BIBLIOTHECAIRE, ADMIN]
-          description: "Le rôle détermine les droits d'accès dans l'application."
-        statut: {type: string, example: "ACTIF"}
+        id: { type: string, format: uuid }
+        nom: { type: string }
+        prenom: { type: string }
+        email: { type: string }
+        role: { type: string }
+        statut: { type: string, example: "ACTIF" }
 
-    # Dans la section components/schemas/
     Livre:
       type: object
-      required:
-        - isbn
-        - titre
-        - auteur
-        - categorie
-        - annee
+      required: [isbn, titre, auteur, categorie, annee]
       properties:
-        isbn: 
-          type: string
-        titre: 
-          type: string
-        auteur: 
-          type: string
-        categorie: 
-          type: string
-        annee: 
-          type: integer 
+        isbn: { type: string }
+        titre: { type: string }
+        auteur: { type: string }
+        categorie: { type: string }
+        annee: { type: integer }
 
     Emprunt:
       type: object
       properties:
-        id: {type: integer}
-        dateEmprunt: {type: string, format: date}
-        dateRetourPrevue: {type: string, format: date}
-        estRendu: {type: boolean}
+        id: { type: integer }
+        dateEmprunt: { type: string, format: date }
+        dateRetourPrevue: { type: string, format: date }
+        estRendu: { type: boolean }
+        utilisateurId: { type: string, format: uuid }
+        exemplaireId: { type: integer }
