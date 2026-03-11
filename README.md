@@ -19,7 +19,7 @@ The repository is organized into a **client-server architecture** using a **mono
 ## Setup and Launch
 
 ### 1. Installation
-Install all dependencies for both the frontend and backend from the root directory:
+Install all dependencies for both the frontend and backend directories:
 
 ```bash
 npm install
