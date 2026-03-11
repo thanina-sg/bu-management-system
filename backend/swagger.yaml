@@ -1,0 +1,121 @@
+openapi: 3.0.0
+info:
+  title: API Bibliothèque UHA
+  description: API de gestion pour le projet de bibliothèque universitaire.
+  version: 1.0.0
+
+# 1. Définition des Serveurs (Optionnel mais pratique)
+servers:
+  - url: http://localhost:5000
+    description: Serveur de développement local
+
+# 2. Définition des Routes (Paths)
+paths:
+  /auth/login:
+    post:
+      summary: Connexion de l'utilisateur
+      tags: [Authentification]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email: {type: string, example: "etudiant@uha.fr"}
+                password: {type: string, example: "123456"}
+      responses:
+        '200':
+          description: Connexion réussie - Renvoie les infos et le rôle
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Utilisateur'
+        '401':
+          description: Identifiants incorrects
+
+  /livres:
+    get:
+      summary: Liste tous les livres du catalogue
+      tags: [Catalogue]
+      responses:
+        '200':
+          description: Liste des livres
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Livre'
+
+  /emprunts:
+    get:
+      summary: Liste les emprunts (Filtre possible par utilisateur)
+      tags: [Emprunts]
+      parameters:
+        - name: utilisateurId
+          in: query
+          schema: {type: integer}
+      responses:
+        '200':
+          description: Succès
+    post:
+      summary: Créer un nouvel emprunt (Réservé Bibliothécaire)
+      tags: [Emprunts]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                utilisateurId: {type: integer}
+                exemplaireId: {type: integer}
+      responses:
+        '201':
+          description: Emprunt créé avec succès
+
+# 3. Définition des Modèles (Components)
+components:
+  schemas:
+    Utilisateur:
+      type: object
+      properties:
+        id: {type: integer}
+        nom: {type: string}
+        prenom: {type: string}
+        email: {type: string}
+        role: 
+          type: string
+          enum: [ETUDIANT, ENSEIGNANT, BIBLIOTHECAIRE, ADMIN]
+          description: "Le rôle détermine les droits d'accès dans l'application."
+        statut: {type: string, example: "ACTIF"}
+
+    # Dans la section components/schemas/
+    Livre:
+      type: object
+      required:
+        - isbn
+        - titre
+        - auteur
+        - categorie
+        - annee
+      properties:
+        isbn: 
+          type: string
+        titre: 
+          type: string
+        auteur: 
+          type: string
+        categorie: 
+          type: string
+        annee: 
+          type: integer 
+
+    Emprunt:
+      type: object
+      properties:
+        id: {type: integer}
+        dateEmprunt: {type: string, format: date}
+        dateRetourPrevue: {type: string, format: date}
+        estRendu: {type: boolean}
