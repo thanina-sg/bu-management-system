@@ -24,8 +24,15 @@ app.use(
   );
 
 const livresRoutes = require('./routes/livres');
+const adminRoutes = require('./routes/admin');
+const usersRoutes = require('./routes/users');
+const reservationsRoutes = require('./routes/reservations');
+const empruntsRoutes = require('./routes/emprunts');
 app.use('/livres', livresRoutes);
-
+app.use('/admin', adminRoutes);
+app.use('/users', usersRoutes);
+app.use('/reservations', reservationsRoutes);
+app.use('/emprunts', empruntsRoutes);
 const authRoutes = require('./routes/auth');
 app.use('/auth', authRoutes);
 
@@ -44,4 +51,3 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
-

@@ -82,6 +82,153 @@ paths:
                 items:
                   $ref: '#/components/schemas/Emprunt'
 
+  /admin/rules:
+    get:
+      summary: Récupère les règles système
+      tags: [Administrateur]
+      responses:
+        '200':
+          description: Liste des règles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SystemRule'
+  /admin/rules/{ruleId}:
+    put:
+      summary: Met à jour l’état d’une règle
+      tags: [Administrateur]
+      parameters:
+        - name: ruleId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                active:
+                  type: boolean
+      responses:
+        '200':
+          description: Règle mise à jour
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/SystemRule'
+        '400':
+          description: Mauvaise requête
+        '404':
+          description: Règle non trouvée
+
+  /admin/users:
+    get:
+      summary: Récupère les comptes administrables
+      tags: [Administrateur]
+      responses:
+        '200':
+          description: Liste des utilisateurs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AdminUser'
+
+  /admin/metrics:
+    get:
+      summary: Statistiques globales du back-office
+      tags: [Administrateur]
+      responses:
+        '200':
+          description: Nombre d’objets clés
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    $ref: '#/components/schemas/AdminMetrics'
+
+  /users:
+    get:
+      summary: Liste des utilisateurs
+      tags: [Utilisateurs]
+      responses:
+        '200':
+          description: Comptes utilisateurs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Utilisateur'
+
+  /reservations:
+    get:
+      summary: Liste des réservations
+      tags: [Réservations]
+      responses:
+        '200':
+          description: Réservations réalisées
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Reservation'
+
+  /emprunts:
+    get:
+      summary: Liste des emprunts
+      tags: [Emprunts]
+      responses:
+        '200':
+          description: Emprunts enregistrés
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Emprunt'
+
 components:
   schemas:
     Utilisateur:
@@ -103,6 +250,7 @@ components:
         auteur: { type: string }
         categorie: { type: string }
         annee: { type: integer }
+        resume: { type: string }
 
     Emprunt:
       type: object
@@ -113,3 +261,86 @@ components:
         estRendu: { type: boolean }
         utilisateurId: { type: string, format: uuid }
         exemplaireId: { type: integer }
+        dateRetourReelle: { type: string, format: date, nullable: true }
+        utilisateur:
+          $ref: '#/components/schemas/Utilisateur'
+        exemplaire:
+          $ref: '#/components/schemas/Exemplaire'
+
+    SystemRule:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        active:
+          type: boolean
+
+    AdminUser:
+      type: object
+      properties:
+        id:
+          type: string
+        fullName:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+        status:
+          type: string
+        privileges:
+          type: array
+          items:
+            type: string
+
+    Reservation:
+      type: object
+      properties:
+        id:
+          type: string
+        id_utilisateur:
+          type: string
+        isbn:
+          type: string
+        date_reservation:
+          type: string
+        statut:
+          type: string
+        position_file:
+          type: integer
+        utilisateur:
+          $ref: '#/components/schemas/Utilisateur'
+        livre:
+          $ref: '#/components/schemas/Livre'
+
+    Exemplaire:
+      type: object
+      properties:
+        id_exemplaire:
+          type: string
+        isbn:
+          type: string
+        etat:
+          type: string
+        localisation:
+          type: string
+        disponibilite:
+          type: boolean
+
+    AdminMetrics:
+      type: object
+      properties:
+        totalBooks:
+          type: integer
+        activeEmprunts:
+          type: integer
+        totalUsers:
+          type: integer
+        administrators:
+          type: integer
+        librarians:
+          type: integer

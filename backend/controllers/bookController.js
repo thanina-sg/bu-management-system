@@ -1,8 +1,8 @@
 const { getAllBooks } = require('../models/bookModel');
 
-const getBooks = (req, res) => {
+const getBooks = async (req, res) => {
     try {
-        const books = getAllBooks();
+        const books = await getAllBooks();
         res.json(books);
     } catch (err) {
         res.status(500).json({ error: err.message });
