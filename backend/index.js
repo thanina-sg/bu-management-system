@@ -23,11 +23,16 @@ app.use(
     }),
   );
 
-const livresRoutes = require('./routes/livres');
-app.use('/livres', livresRoutes);
 
 const authRoutes = require('./routes/auth');
 app.use('/auth', authRoutes);
+
+const bookRoutes = require('./routes/livres');
+app.use('/api/books', bookRoutes);
+
+const empruntRoutes = require('./routes/emprunt');
+app.use('/emprunts', empruntRoutes);
+
 
 // Basic test route
 app.get('/', (req, res) => {

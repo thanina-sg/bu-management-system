@@ -50,10 +50,34 @@ paths:
         '401':
           description: Erreur d'envoi
 
-  /livres:
+  /api/books:
     get:
       summary: Liste tous les livres du catalogue
-      tags: [Catalogue]
+      tags:
+        - Catalogue
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: "Recherche par titre, auteur ou ISBN"
+
+        - in: query
+          name: categorie
+          schema:
+            type: string
+          description: "Filtrer par catégorie (ex: Roman, Dystopie)"
+
+        - in: query
+          name: sort
+          schema:
+            type: string
+            enum:
+              - auteur
+              - disponibilite
+              - titre
+          description: "Trier les résultats"
+
       responses:
         '200':
           description: Liste des livres
@@ -63,15 +87,37 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Livre'
-
+  /api/books/{isbn}/dispo:
+    get:
+      summary: Récupère le stock réel pour un ISBN précis
+      tags: [Catalogue]
+      parameters:
+        - in: path
+          name: isbn
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Stock actuel
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  isbn: { type: string }
+                  nb_disponible: { type: integer }
+                  disponible: { type: boolean }
   /emprunts:
     get:
       summary: Liste les emprunts
       tags: [Emprunts]
       parameters:
-        - name: utilisateurId
-          in: query
-          schema: { type: string, format: uuid }
+        - in: query
+          name: utilisateurId
+          schema:
+            type: string
+            format: uuid
       responses:
         '200':
           description: Succès
@@ -81,6 +127,39 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Emprunt'
+                  
+    post:
+      summary: Effectuer un nouvel emprunt (réservation)
+      tags: [Emprunts]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id_utilisateur, isbn]
+              properties:
+                id_utilisateur: 
+                  type: string
+                  format: uuid
+                  example: "550e8400-e29b-41d4-a716-446655440000"
+                isbn: 
+                  type: string
+                  example: "9782070415793"
+      responses:
+        '201':
+          description: Emprunt créé avec succès
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  emprunt: { $ref: '#/components/schemas/Emprunt' }
+        '400':
+          description: Aucun exemplaire disponible ou données manquantes
+        '500':
+          description: Erreur serveur
 
 components:
   schemas:
@@ -103,6 +182,14 @@ components:
         auteur: { type: string }
         categorie: { type: string }
         annee: { type: integer }
+        est_disponible: { type: boolean }
+        exemplaire:
+          type: object
+          properties:
+            id_exemplaire: { type: string, format: uuid }
+            disponibilite: { type: boolean }
+            etat: { type: string }
+            localisation: { type: string }
 
     Emprunt:
       type: object
