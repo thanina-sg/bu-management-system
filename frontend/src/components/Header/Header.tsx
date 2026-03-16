@@ -1,4 +1,15 @@
+import React, { useState, useEffect } from 'react';
+// @ts-ignore
+import LoginPopup from '../LoginPopup';
+
 export const Header = () => {
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [user, setUser] = useState<any>(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('user');
+    if (saved) setUser(JSON.parse(saved));
+  }, []); 
   return (
     <header className="w-full bg-white shadow-sm sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
@@ -23,14 +34,40 @@ export const Header = () => {
         </nav>
 
         {/* Sign In */}
-        <button className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-amber-700 font-medium transition">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-          </svg>
-          Sign In
-        </button>
+        <div className="flex items-center gap-4">
+          {user ? (
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-bold text-gray-900">{user.prenom}</span>
+              <button 
+                onClick={() => { localStorage.removeItem('user'); setUser(null); }}
+                className="text-xs text-red-600 hover:underline"
+              >
+                Logout
+              </button>
+            </div>
+          ) : (
+            <button 
+              onClick={() => setIsAuthOpen(true)} 
+              className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-amber-700 font-medium transition"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              Sign In
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* --- L'APPEL DU COMPOSANT --- */}
+      <LoginPopup 
+        isOpen={isAuthOpen} 
+        onClose={() => setIsAuthOpen(false)} 
+        onAuthSuccess={(userData: any) => {
+          setUser(userData);
+          localStorage.setItem('user', JSON.stringify(userData));
+        }} 
+      />
     </header>
   );
 };
-

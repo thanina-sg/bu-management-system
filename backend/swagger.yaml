@@ -54,6 +54,23 @@ paths:
     get:
       summary: Liste tous les livres du catalogue
       tags: [Catalogue]
+      parameters:
+        - in: query
+          name: search
+          schema:
+            type: string
+          description: Recherche par titre, auteur ou ISBN
+        - in: query
+          name: categorie
+          schema:
+            type: string
+          description: Filtrer par catégorie (ex: Roman, Dystopie)
+        - in: query
+          name: sort
+          schema:
+            type: string
+            enum: [auteur, disponibilite, titre]
+          description: Trier les résultats
       responses:
         '200':
           description: Liste des livres
@@ -69,9 +86,11 @@ paths:
       summary: Liste les emprunts
       tags: [Emprunts]
       parameters:
-        - name: utilisateurId
-          in: query
-          schema: { type: string, format: uuid }
+        - in: query
+          name: utilisateurId
+          schema:
+            type: string
+            format: uuid
       responses:
         '200':
           description: Succès
@@ -103,6 +122,7 @@ components:
         auteur: { type: string }
         categorie: { type: string }
         annee: { type: integer }
+        est_disponible: { type: boolean }
 
     Emprunt:
       type: object
