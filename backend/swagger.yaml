@@ -74,13 +74,18 @@ paths:
           schema: { type: string, format: uuid }
       responses:
         '200':
-          description: Succès
+          description: Emprunts enregistrés
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Emprunt'
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Emprunt'
 
   /admin/rules:
     get:
@@ -100,6 +105,7 @@ paths:
                     type: array
                     items:
                       $ref: '#/components/schemas/SystemRule'
+
   /admin/rules/{ruleId}:
     put:
       summary: Met à jour l’état d’une règle
@@ -210,25 +216,6 @@ paths:
                     items:
                       $ref: '#/components/schemas/Reservation'
 
-  /emprunts:
-    get:
-      summary: Liste des emprunts
-      tags: [Emprunts]
-      responses:
-        '200':
-          description: Emprunts enregistrés
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Emprunt'
-
 components:
   schemas:
     Utilisateur:
@@ -270,28 +257,19 @@ components:
     SystemRule:
       type: object
       properties:
-        id:
-          type: string
-        title:
-          type: string
-        description:
-          type: string
-        active:
-          type: boolean
+        id: { type: string }
+        title: { type: string }
+        description: { type: string }
+        active: { type: boolean }
 
     AdminUser:
       type: object
       properties:
-        id:
-          type: string
-        fullName:
-          type: string
-        email:
-          type: string
-        role:
-          type: string
-        status:
-          type: string
+        id: { type: string }
+        fullName: { type: string }
+        email: { type: string }
+        role: { type: string }
+        status: { type: string }
         privileges:
           type: array
           items:
@@ -300,18 +278,12 @@ components:
     Reservation:
       type: object
       properties:
-        id:
-          type: string
-        id_utilisateur:
-          type: string
-        isbn:
-          type: string
-        date_reservation:
-          type: string
-        statut:
-          type: string
-        position_file:
-          type: integer
+        id: { type: string }
+        id_utilisateur: { type: string }
+        isbn: { type: string }
+        date_reservation: { type: string }
+        statut: { type: string }
+        position_file: { type: integer }
         utilisateur:
           $ref: '#/components/schemas/Utilisateur'
         livre:
@@ -320,27 +292,17 @@ components:
     Exemplaire:
       type: object
       properties:
-        id_exemplaire:
-          type: string
-        isbn:
-          type: string
-        etat:
-          type: string
-        localisation:
-          type: string
-        disponibilite:
-          type: boolean
+        id_exemplaire: { type: string }
+        isbn: { type: string }
+        etat: { type: string }
+        localisation: { type: string }
+        disponibilite: { type: boolean }
 
     AdminMetrics:
       type: object
       properties:
-        totalBooks:
-          type: integer
-        activeEmprunts:
-          type: integer
-        totalUsers:
-          type: integer
-        administrators:
-          type: integer
-        librarians:
-          type: integer
+        totalBooks: { type: integer }
+        activeEmprunts: { type: integer }
+        totalUsers: { type: integer }
+        administrators: { type: integer }
+        librarians: { type: integer }
