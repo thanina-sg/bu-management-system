@@ -1,33 +1,40 @@
-import { useState } from 'react';
-import { DataTable } from '../Dashboard/DataTable';
+import { useEffect, useState } from 'react';
+import { AdminUserCard } from './AdminUserCard';
+import type { AdminUser } from '../../types/admin';
 
 export const AdminUsers = () => {
-  const [users] = useState([
-    { id: '1', name: 'Nina Sg', email: 'nina@example.com', role: 'Librarian', status: 'Active' },
-    { id: '2', name: 'John Doe', email: 'john@example.com', role: 'User', status: 'Active' },
-    { id: '3', name: 'Jane Smith', email: 'jane@example.com', role: 'Librarian', status: 'Inactive' },
-    { id: '4', name: 'Bob Wilson', email: 'bob@example.com', role: 'User', status: 'Active' },
-  ]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const columns = [
-    { key: 'name', header: 'Name' },
-    { key: 'email', header: 'Email' },
-    { key: 'role', header: 'Role' },
-    { key: 'status', header: 'Status' },
-  ];
+  useEffect(() => {
+    // Linked to your adminModel.getAdminUsers()
+    fetch('http://localhost:5000/admin/users')
+      .then(res => res.json())
+      .then(data => {
+        setUsers(data.data);
+        setLoading(false);
+      });
+  }, []);
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h3 className="text-lg font-semibold text-gray-800">Manage Users</h3>
-          <p className="text-sm text-gray-600">View and manage all users in the system</p>
+          <h2 className="text-4xl font-black text-white tracking-tighter">Utilisateurs</h2>
+          <p className="text-slate-400 font-medium mt-1">Gestion des accès et de la hiérarchie du système.</p>
         </div>
-        <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
-          + Add New User
+        <button className="group relative px-8 py-4 bg-blue-600 rounded-2xl overflow-hidden transition-all hover:bg-blue-500 active:scale-95">
+           <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+           <span className="relative text-white font-black uppercase tracking-widest text-xs">+ Ajouter un membre</span>
         </button>
       </div>
-      <DataTable columns={columns} data={users} title="All Users" />
+
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+        {loading 
+          ? [1, 2, 3].map(i => <div key={i} className="h-64 rounded-3xl bg-white/5 animate-pulse border border-white/5" />)
+          : users.map(user => <AdminUserCard key={user.id} user={user} />)
+        }
+      </div>
     </div>
   );
 };

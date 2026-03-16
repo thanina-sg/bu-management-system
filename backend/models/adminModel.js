@@ -45,33 +45,19 @@ const formatRoleLabel = (role) => {
   return mapping[role.toUpperCase()] ?? role;
 };
 
+const rulesState = DEFAULT_RULES.map((rule) => ({ ...rule }));
+
 const getSystemRules = async () => {
-  const { data, error } = await supabase
-    .from('system_rule')
-    .select('*')
-    .order('title', { ascending: true });
-  if (error) {
-    console.warn('system_rule table unavailable, falling back to defaults', error.message);
-    return DEFAULT_RULES;
-  }
-  return data.map((rule) => ({
-    id: rule.id,
-    title: rule.title,
-    description: rule.description,
-    active: rule.active,
-  }));
+  return rulesState;
 };
 
 const toggleRule = async (ruleId, active) => {
-  const { data, error } = await supabase
-    .from('system_rule')
-    .update({ active })
-    .eq('id', ruleId)
-    .select('*')
-    .single();
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error('Règle introuvable');
-  return data;
+  const index = rulesState.findIndex((rule) => rule.id === ruleId);
+  if (index === -1) {
+    throw new Error('Règle introuvable');
+  }
+  rulesState[index].active = active;
+  return rulesState[index];
 };
 
 const getAdminUsers = async () => {
