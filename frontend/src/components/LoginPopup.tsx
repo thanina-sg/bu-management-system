@@ -26,6 +26,8 @@ const LoginPopup: React.FC<LoginPopupProps> = ({ isOpen, onClose, onAuthSuccess 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    
+    // URLs basées sur ton OpenAPI
     const endpoint = isRegister ? '/auth/register' : '/auth/login';
     
     try {
@@ -36,19 +38,24 @@ const LoginPopup: React.FC<LoginPopupProps> = ({ isOpen, onClose, onAuthSuccess 
       });
 
       const data = await response.json();
+
       if (response.ok) {
-        // STOCKAGE LOCAL
-        localStorage.setItem('user', JSON.stringify(data.user));
-        // On s'assure de stocker l'ID sous une clé simple 'userId'
-        localStorage.setItem('userId', data.user.id_utilisateur || data.user.id);
+        // IMPORTANT : On récupère l'ID (UUID) selon ton schéma Utilisateur
+        const userObj = data.user;
+        const userId = userObj.id || userObj.utilisateurId;
+
+        if (userId) {
+          localStorage.setItem('user', JSON.stringify(userObj));
+          localStorage.setItem('userId', userId);
+        }
         
-        onAuthSuccess(data.user);
+        onAuthSuccess(userObj);
         onClose();
       } else {
-        setError(data.error || "Une erreur est survenue.");
+        setError(data.error || "Identifiants incorrects ou erreur serveur.");
       }
     } catch (err) {
-      setError("Le serveur ne répond pas. Vérifiez que l'API est lancée.");
+      setError("Le serveur est injoignable.");
     }
   };
 
@@ -71,7 +78,7 @@ const LoginPopup: React.FC<LoginPopupProps> = ({ isOpen, onClose, onAuthSuccess 
           {error && <div className="p-4 bg-rose-50 text-rose-700 text-xs font-bold rounded-2xl border border-rose-100">{error}</div>}
           <div className="space-y-2">
             <label className="text-[10px] font-black text-stone-400 uppercase tracking-widest ml-1">Email Universitaire</label>
-            <input name="email" type="email" required placeholder="prenom.nom@uha.fr" className="w-full rounded-2xl border-2 border-stone-100 bg-stone-50 p-5 outline-none focus:bg-white transition-all" value={formData.email} onChange={handleChange} />
+            <input name="email" type="email" required placeholder="votre.nom@uha.fr" className="w-full rounded-2xl border-2 border-stone-100 bg-stone-50 p-5 outline-none focus:bg-white transition-all" value={formData.email} onChange={handleChange} />
           </div>
 
           {isRegister && (
@@ -83,6 +90,7 @@ const LoginPopup: React.FC<LoginPopupProps> = ({ isOpen, onClose, onAuthSuccess 
               <select name="role" className="w-full rounded-2xl border-2 border-stone-100 bg-stone-50 p-5 outline-none font-bold text-stone-600" value={formData.role} onChange={handleChange}>
                 <option value="ETUDIANT">Étudiant</option>
                 <option value="ENSEIGNANT">Enseignant</option>
+                <option value="BIBLIOTHECAIRE">Bibliothécaire</option>
               </select>
             </div>
           )}
