@@ -50,27 +50,34 @@ paths:
         '401':
           description: Erreur d'envoi
 
-  /livres:
+  /api/books:
     get:
       summary: Liste tous les livres du catalogue
-      tags: [Catalogue]
+      tags:
+        - Catalogue
       parameters:
         - in: query
           name: search
           schema:
             type: string
-          description: Recherche par titre, auteur ou ISBN
+          description: "Recherche par titre, auteur ou ISBN"
+
         - in: query
           name: categorie
           schema:
             type: string
-          description: Filtrer par catégorie (ex: Roman, Dystopie)
+          description: "Filtrer par catégorie (ex: Roman, Dystopie)"
+
         - in: query
           name: sort
           schema:
             type: string
-            enum: [auteur, disponibilite, titre]
-          description: Trier les résultats
+            enum:
+              - auteur
+              - disponibilite
+              - titre
+          description: "Trier les résultats"
+
       responses:
         '200':
           description: Liste des livres
@@ -123,6 +130,13 @@ components:
         categorie: { type: string }
         annee: { type: integer }
         est_disponible: { type: boolean }
+        exemplaire:
+          type: object
+          properties:
+            id_exemplaire: { type: string, format: uuid }
+            disponibilite: { type: boolean }
+            etat: { type: string }
+            localisation: { type: string }
 
     Emprunt:
       type: object

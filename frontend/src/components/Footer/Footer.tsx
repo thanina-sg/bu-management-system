@@ -1,79 +1,87 @@
-export const Footer = () => {
+import React from 'react';
+
+export const Footer = ({ totalBooks }: { totalBooks?: number }) => {
   const currentYear = new Date().getFullYear();
   
   return (
-    <footer className="w-full bg-gradient-to-b from-gray-900 to-gray-950 text-gray-300 mt-20">
+    <footer className="w-full bg-[#1a1512] text-stone-400 mt-20 border-t border-amber-900/20">
       <div className="max-w-7xl mx-auto px-6 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
-          {/* About */}
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 bg-gradient-to-br from-amber-600 to-amber-700 rounded-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z" />
-                </svg>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
+          
+          {/* Identité & Statut du Catalogue */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-amber-800 rounded flex items-center justify-center text-white font-bold shadow-lg shadow-amber-900/20">
+                U
               </div>
-              <h3 className="font-bold text-white text-lg">University Library</h3>
+              <h3 className="font-bold text-white text-lg tracking-tight uppercase font-serif">BU-UHA</h3>
             </div>
-            <p className="text-sm leading-relaxed text-gray-400">
-              Providing access to thousands of academic resources to support research and learning excellence.
+            <p className="text-sm leading-relaxed text-stone-500 max-w-xs font-medium italic">
+              Système de gestion en temps réel du fonds documentaire de l'Université de Haute-Alsace.
             </p>
+            {/* Affichage dynamique de la BDD si tu passes la prop totalBooks */}
+            {totalBooks !== undefined && (
+              <div className="inline-block px-3 py-1 bg-stone-800/50 rounded-lg border border-stone-700">
+                <p className="text-[10px] font-black text-amber-600 uppercase tracking-tighter">
+                  {totalBooks} Ouvrages répertoriés
+                </p>
+              </div>
+            )}
           </div>
 
-          {/* Collections */}
+          {/* Contact Réel */}
           <div>
-            <h3 className="font-bold text-white mb-4 text-sm uppercase tracking-wide">Collections</h3>
-            <ul className="space-y-3 text-sm">
-              <li><a href="#" className="text-gray-400 hover:text-amber-500 transition">Browse Catalog</a></li>
-              <li><a href="#" className="text-gray-400 hover:text-amber-500 transition">Research Guides</a></li>
-              <li><a href="#" className="text-gray-400 hover:text-amber-500 transition">Digital Archives</a></li>
-              <li><a href="#" className="text-gray-400 hover:text-amber-500 transition">Rare Books</a></li>
-            </ul>
+            <h3 className="font-black text-white mb-6 text-[10px] uppercase tracking-[0.3em] opacity-50">Assistance</h3>
+            <div className="space-y-4 text-sm">
+              <div className="flex items-center gap-4 group cursor-pointer">
+                <div className="w-10 h-10 rounded-xl bg-stone-800/50 flex items-center justify-center group-hover:bg-amber-800 transition-all duration-300">
+                  <svg className="w-4 h-4 text-amber-500 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-stone-500 uppercase">Email</p>
+                  <p className="text-stone-300 font-medium">bu@uha.fr</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 group">
+                <div className="w-10 h-10 rounded-xl bg-stone-800/50 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-stone-500 uppercase">Horaires</p>
+                  <p className="text-stone-300 font-medium">Lun-Ven: 08h - 19h</p>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Services */}
+          {/* Catégories Actives (Exemples de ce qui est en BDD) */}
           <div>
-            <h3 className="font-bold text-white mb-4 text-sm uppercase tracking-wide">Services</h3>
-            <ul className="space-y-3 text-sm">
-              <li><a href="#" className="text-gray-400 hover:text-amber-500 transition">Interlibrary Loan</a></li>
-              <li><a href="#" className="text-gray-400 hover:text-amber-500 transition">Reference Help</a></li>
-              <li><a href="#" className="text-gray-400 hover:text-amber-500 transition">Database Access</a></li>
-              <li><a href="#" className="text-gray-400 hover:text-amber-500 transition">E-Resources</a></li>
-            </ul>
-          </div>
-
-          {/* Contact */}
-          <div>
-            <h3 className="font-bold text-white mb-4 text-sm uppercase tracking-wide">Contact</h3>
-            <div className="space-y-3 text-sm text-gray-400">
-              <div className="flex items-center gap-2">
-                <svg className="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20"><path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.8c.22 1.394.406 2.858.553 4.32a1 1 0 01-.621 1.144l-1.798.798A11.988 11.988 0 0015.849 15.849l.798-1.798a1 1 0 011.144-.621c1.462.147 2.926.333 4.32.553a1 1 0 01.8.986v2.153a1 1 0 01-1 1H4a1 1 0 01-1-1V3z"/></svg>
-                <span>(555) 123-4567</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <svg className="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20"><path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"/><path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"/></svg>
-                <span>library@university.edu</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <svg className="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00-.293.707l-.707.707a1 1 0 101.414 1.414l1-1A1 1 0 0011 9.414V6z" clip-rule="evenodd"/></svg>
-                <span>Mon-Fri 8AM-8PM</span>
-              </div>
+            <h3 className="font-black text-white mb-6 text-[10px] uppercase tracking-[0.3em] opacity-50">Exploration</h3>
+            <div className="flex flex-wrap gap-2">
+              {['Informatique', 'Roman', 'Science', 'Droit'].map((cat) => (
+                <span key={cat} className="px-3 py-1.5 bg-stone-800/30 border border-stone-700/50 rounded-md text-[10px] font-bold text-stone-400 uppercase hover:text-amber-500 hover:border-amber-500/30 transition-all cursor-default">
+                  {cat}
+                </span>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Divider */}
-        <div className="border-t border-gray-800 pt-8"></div>
-
-        {/* Bottom Section */}
-        <div className="flex flex-col md:flex-row items-center justify-between text-sm text-gray-400">
-          <div>
-            <p>&copy; {currentYear} University Library. All rights reserved.</p>
+        {/* Bottom Bar */}
+        <div className="border-t border-stone-800/50 pt-8 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-4">
+            <div className="h-[1px] w-8 bg-amber-900/50"></div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-stone-600">
+              &copy; {currentYear} BU-UHA . Database Synced
+            </p>
           </div>
-          <div className="flex gap-6 mt-4 md:mt-0">
-            <a href="#" className="hover:text-amber-500 transition">Privacy Policy</a>
-            <a href="#" className="hover:text-amber-500 transition">Terms of Use</a>
-            <a href="#" className="hover:text-amber-500 transition">Accessibility</a>
+          <div className="flex gap-8 text-[10px] font-black uppercase tracking-widest text-stone-500">
+            <span className="hover:text-amber-500 transition-colors cursor-pointer">Confidentialité</span>
+            <span className="hover:text-amber-500 transition-colors cursor-pointer">Mentions Légales</span>
           </div>
         </div>
       </div>

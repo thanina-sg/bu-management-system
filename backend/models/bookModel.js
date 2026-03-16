@@ -1,51 +1,54 @@
-const pool = require('../db'); // Assure-toi que ce chemin pointe vers ta config PG
+const supabase = require('../db');
 
 const getAllBooks = async (filters = {}) => {
-    const { search, categorie, sortBy } = filters;
-    
-    // Initialisation de la requête
-    // On sélectionne tout de livre + on vérifie s'il existe un exemplaire dispo
-    let query = `
-        SELECT l.*, 
-        EXISTS (
-            SELECT 1 FROM exemplaire e 
-            WHERE e.isbn = l.isbn AND e.disponibilite = true
-        ) as est_disponible
-        FROM livre l
-        WHERE 1=1
-    `;
-    
-    const values = [];
+  const { search, categorie, sortBy } = filters;
 
-    // Filtre de recherche (Titre, Auteur ou ISBN)
-    if (search) {
-        values.push(`%${search}%`);
-        query += ` AND (l.titre ILIKE $${values.length} OR l.auteur ILIKE $${values.length} OR l.isbn ILIKE $${values.length})`;
-    }
+  // On sélectionne le livre + le premier exemplaire (disponibilité)
+  let query = supabase
+    .from('livre')
+    .select(`
+      *,
+      exemplaire!inner(disponibilite)
+    `);
 
-    // Filtre par catégorie
-    if (categorie) {
-        values.push(categorie);
-        query += ` AND l.categorie = $${values.length}`;
-    }
+  // Recherche par titre, auteur ou ISBN
+  if (search) {
+    query = query.or(`titre.ilike.%${search}%,auteur.ilike.%${search}%,isbn.ilike.%${search}%`);
+  }
 
-    // Logique de tri
-    if (sortBy === 'auteur') {
-        query += ` ORDER BY l.auteur ASC`;
-    } else if (sortBy === 'disponibilite') {
-        query += ` ORDER BY est_disponible DESC`; // True (1) avant False (0)
-    } else {
-        query += ` ORDER BY l.titre ASC`; // Tri par défaut
-    }
+  // Filtre par catégorie
+  if (categorie) {
+    query = query.eq('categorie', categorie);
+  }
 
-    try {
-        const res = await pool.query(query, values);
-        return res.rows;
-    } catch (err) {
-        throw new Error("Erreur SQL : " + err.message);
-    }
+  // Tri
+  if (sortBy === 'auteur') {
+    query = query.order('auteur', { ascending: true });
+  } else if (sortBy === 'disponibilite') {
+    query = query.order('disponibilite', { foreignTable: 'exemplaire', ascending: false });
+  } else {
+    query = query.order('titre', { ascending: true });
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    throw new Error("Erreur Supabase : " + error.message);
+  }
+
+  // Comme on n’a qu’un exemplaire par livre, on mappe directement la disponibilité
+  const books = data.map(b => ({
+    isbn: b.isbn,
+    titre: b.titre,
+    auteur: b.auteur,
+    categorie: b.categorie,
+    annee: b.annee,
+    est_disponible: b.exemplaire[0]?.disponibilite ?? false
+  }));
+
+  return books;
 };
 
 module.exports = {
-    getAllBooks
+  getAllBooks
 };
