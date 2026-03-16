@@ -1,7 +1,44 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 export const BookPopup = ({ book, isOpen, onClose, similarBooks }: any) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   if (!isOpen || !book) return null;
+
+  const handleEmprunt = async () => {
+    // Récupération de l'ID utilisateur stocké lors du login
+    const userId = localStorage.getItem('userId');
+
+    if (!userId) {
+      alert("⚠️ Connexion requise : Veuillez vous connecter pour emprunter cet ouvrage.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch('http://localhost:5000/api/emprunts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id_utilisateur: userId,
+          isbn: book.isbn
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert("✨ Félicitations : " + (data.message || "Votre emprunt a été validé !"));
+        onClose();
+      } else {
+        alert("❌ Action impossible : " + data.error);
+      }
+    } catch (err) {
+      alert("❌ Erreur : Impossible de joindre le serveur de la bibliothèque.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
@@ -28,7 +65,6 @@ export const BookPopup = ({ book, isOpen, onClose, similarBooks }: any) => {
           
           {/* COLONNE GAUCHE : VISUEL IMMERSIF */}
           <div className="lg:w-[42%] bg-stone-100 p-12 flex items-center justify-center relative overflow-hidden">
-            {/* Dégradé d'ambiance en arrière-plan */}
             <div className="absolute inset-0 bg-gradient-to-br from-amber-900/5 to-transparent opacity-50" />
             
             <div className="relative z-10 w-full group">
@@ -42,13 +78,15 @@ export const BookPopup = ({ book, isOpen, onClose, similarBooks }: any) => {
                 )}
               </div>
               
-              {/* Badge de disponibilité stylisé sous l'image */}
-              <div className={`mt-8 py-3 rounded-2xl text-center font-black uppercase tracking-[0.2em] text-[10px] border shadow-sm ${
-                book.est_disponible 
+              {/* Badge dynamique avec nb_disponible */}
+              <div className={`mt-8 py-3 rounded-2xl text-center font-black uppercase tracking-[0.2em] text-[10px] border shadow-sm transition-colors duration-300 ${
+                book.nb_disponible > 0 
                   ? 'bg-emerald-50 border-emerald-100 text-emerald-700' 
                   : 'bg-rose-50 border-rose-100 text-rose-700'
               }`}>
-                {book.est_disponible ? '✓ Exemplaire Disponible' : '✗ Actuellement Emprunté'}
+                {book.nb_disponible > 0 
+                  ? `✓ ${book.nb_disponible} Exemplaire${book.nb_disponible > 1 ? 's' : ''} disponible${book.nb_disponible > 1 ? 's' : ''}` 
+                  : '✗ Aucun exemplaire disponible'}
               </div>
             </div>
           </div>
@@ -65,14 +103,21 @@ export const BookPopup = ({ book, isOpen, onClose, similarBooks }: any) => {
               <p className="text-2xl italic text-stone-400 font-medium">par {book.auteur}</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-10 mb-10 pb-10 border-b border-stone-100">
+            {/* GRILLE D'INFOS : 3 COLONNES */}
+            <div className="grid grid-cols-3 gap-6 mb-10 pb-10 border-b border-stone-100">
               <div>
                 <h4 className="text-[10px] font-black text-stone-300 uppercase tracking-widest mb-2">Référence ISBN</h4>
-                <p className="text-stone-800 font-bold font-mono text-lg">{book.isbn}</p>
+                <p className="text-stone-800 font-bold font-mono text-base">{book.isbn}</p>
               </div>
               <div>
                 <h4 className="text-[10px] font-black text-stone-300 uppercase tracking-widest mb-2">Publication</h4>
-                <p className="text-stone-800 font-bold text-lg">{book.annee || "N/A"}</p>
+                <p className="text-stone-800 font-bold text-base">{book.annee || "N/A"}</p>
+              </div>
+              <div>
+                <h4 className="text-[10px] font-black text-stone-300 uppercase tracking-widest mb-2">Stock</h4>
+                <p className={`font-bold text-base ${book.nb_disponible > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                  {book.nb_disponible} unité{book.nb_disponible > 1 ? 's' : ''}
+                </p>
               </div>
             </div>
 
@@ -83,21 +128,33 @@ export const BookPopup = ({ book, isOpen, onClose, similarBooks }: any) => {
               </p>
             </div>
 
-            {/* Bouton d'action massif */}
+            {/* Bouton d'action massif avec logique Emprunt / Réservation */}
             <div className="mt-12">
-              <button className={`w-full py-6 rounded-3xl font-black uppercase tracking-[0.3em] text-xs transition-all duration-500 shadow-xl active:scale-[0.98] ${
-                book.est_disponible 
-                  ? 'bg-stone-900 text-white hover:bg-amber-800' 
-                  : 'bg-amber-700 text-white hover:bg-amber-900'
-              }`}>
-                {book.est_disponible ? 'Réserver cet ouvrage' : 'Être alerté du retour'}
+              <button 
+                onClick={handleEmprunt}
+                disabled={isSubmitting}
+                className={`w-full py-6 rounded-3xl font-black uppercase tracking-[0.3em] text-xs transition-all duration-500 shadow-xl active:scale-[0.98] ${
+                  isSubmitting ? 'bg-stone-300 cursor-not-allowed' :
+                  book.nb_disponible > 0 
+                    ? 'bg-stone-900 text-white hover:bg-stone-700 shadow-stone-200' 
+                    : 'bg-amber-700 text-white hover:bg-amber-900 shadow-amber-200'
+                }`}
+              >
+                {isSubmitting ? 'Traitement de la demande...' : 
+                 book.nb_disponible > 0 ? 'Emprunter cet ouvrage' : 'Réserver (File d\'attente)'}
               </button>
+              
+              {book.nb_disponible === 0 && !isSubmitting && (
+                <p className="text-center mt-4 text-[10px] text-stone-400 font-medium uppercase tracking-widest animate-pulse">
+                  Le livre est actuellement victime de son succès
+                </p>
+              )}
             </div>
           </div>
         </div>
 
-        {/* SECTION RECOMMANDATIONS FLUIDE */}
-        {similarBooks.length > 0 && (
+        {/* SECTION RECOMMANDATIONS */}
+        {similarBooks && similarBooks.length > 0 && (
           <div className="bg-stone-50/50 p-12 border-t border-stone-100">
             <h3 className="text-center text-[10px] font-black text-stone-400 uppercase tracking-[0.4em] mb-12">
               Dans la même collection

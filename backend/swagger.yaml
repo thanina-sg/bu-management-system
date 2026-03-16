@@ -87,7 +87,27 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Livre'
-
+  /api/books/{isbn}/dispo:
+    get:
+      summary: Récupère le stock réel pour un ISBN précis
+      tags: [Catalogue]
+      parameters:
+        - in: path
+          name: isbn
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Stock actuel
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  isbn: { type: string }
+                  nb_disponible: { type: integer }
+                  disponible: { type: boolean }
   /emprunts:
     get:
       summary: Liste les emprunts
@@ -107,6 +127,39 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Emprunt'
+                  
+    post:
+      summary: Effectuer un nouvel emprunt (réservation)
+      tags: [Emprunts]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id_utilisateur, isbn]
+              properties:
+                id_utilisateur: 
+                  type: string
+                  format: uuid
+                  example: "550e8400-e29b-41d4-a716-446655440000"
+                isbn: 
+                  type: string
+                  example: "9782070415793"
+      responses:
+        '201':
+          description: Emprunt créé avec succès
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  emprunt: { $ref: '#/components/schemas/Emprunt' }
+        '400':
+          description: Aucun exemplaire disponible ou données manquantes
+        '500':
+          description: Erreur serveur
 
 components:
   schemas:
