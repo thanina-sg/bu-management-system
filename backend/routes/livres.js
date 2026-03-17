@@ -1,11 +1,23 @@
 const express = require('express');
 const router = express.Router();
-const { getBooks, getStock } = require('../controllers/bookController');
+const { getAllBooks, getBook, getBookRecommendations, createBook, modifyBook, removeBook } = require('../controllers/bookController');
 
-// Route 1 : Liste et filtres (ex: /api/books?search=potter)
-router.get('/', getBooks);
+// GET /api/books
+router.get('/', getAllBooks);
 
-// Route 2 : Dispo précise (ex: /api/books/9782070415793/dispo)
-router.get('/:isbn/dispo', getStock);
+// GET /api/books/:id
+router.get('/:id', getBook);
+
+// GET /api/books/:id/recommendations
+router.get('/:id/recommendations', getBookRecommendations);
+
+// POST /api/books
+router.post('/', createBook);
+
+// PUT /api/books/:id
+router.put('/:id', modifyBook);
+
+// DELETE /api/books/:id
+router.delete('/:id', removeBook);
 
 module.exports = router;

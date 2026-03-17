@@ -1,29 +1,76 @@
-const BookModel = require('../models/bookModel');
+const { getBooks, getBookById, getRecommendations, addBook, updateBook, deleteBook } = require('../models/bookModel');
 
-// Pour la liste filtrée
-const getBooks = async (req, res) => {
+const getAllBooks = async (req, res) => {
     try {
         const filters = {
-            search: req.query.search || null,
-            categorie: req.query.categorie || null,
-            sortBy: req.query.sort || null
+            search: req.query.q || req.query.search,
+            category: req.query.category,
+            status: req.query.status
         };
-        const books = await BookModel.getAllBooks(filters);
-        res.status(200).json(books);
+
+        const books = await getBooks(filters);
+        res.json(books);
+
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(400).json({ error: err.message });
     }
 };
 
-// Pour la disponibilité unitaire
-const getStock = async (req, res) => {
+const getBook = async (req, res) => {
     try {
-        const { isbn } = req.params;
-        const stock = await BookModel.getDisponibiliteByIsbn(isbn);
-        res.status(200).json(stock);
+        const book = await getBookById(req.params.id);
+        res.json(book);
+
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        res.status(404).json({ error: err.message });
     }
 };
 
-module.exports = { getBooks, getStock };
+const getBookRecommendations = async (req, res) => {
+    try {
+        const recommendations = await getRecommendations(req.params.id);
+        res.json(recommendations);
+
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+};
+
+const createBook = async (req, res) => {
+    try {
+        const book = await addBook(req.body);
+        res.status(201).json(book);
+
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+};
+
+const modifyBook = async (req, res) => {
+    try {
+        const book = await updateBook(req.params.id, req.body);
+        res.json(book);
+
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+};
+
+const removeBook = async (req, res) => {
+    try {
+        await deleteBook(req.params.id);
+        res.sendStatus(204);
+
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+};
+
+module.exports = {
+    getAllBooks,
+    getBook,
+    getBookRecommendations,
+    createBook,
+    modifyBook,
+    removeBook
+};
