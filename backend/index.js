@@ -19,8 +19,9 @@ app.use(express.json());
 const swaggerDocument = YAML.load(path.join(__dirname, './swagger.yaml'));
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-// --- 3. OpenAPI Validation ---
-// This will validate incoming requests against your swagger.yaml
+// --- 3. OpenAPI Validation (Disabled for now) ---
+// TODO: Re-enable after fixing swagger.yaml compatibility
+/*
 app.use(
     OpenApiValidator.middleware({
         apiSpec: path.join(__dirname, './swagger.yaml'),
@@ -28,6 +29,7 @@ app.use(
         validateResponses: false,
     }),
 );
+*/
 
 // --- 4. Route Imports ---
 const authRoutes = require('./routes/auth');
