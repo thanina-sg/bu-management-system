@@ -27,14 +27,19 @@ const livresRoutes = require('./routes/livres');
 const adminRoutes = require('./routes/admin');
 const usersRoutes = require('./routes/users');
 const reservationsRoutes = require('./routes/reservations');
-const empruntsRoutes = require('./routes/emprunts');
 app.use('/livres', livresRoutes);
 app.use('/admin', adminRoutes);
 app.use('/users', usersRoutes);
 app.use('/reservations', reservationsRoutes);
-app.use('/emprunts', empruntsRoutes);
 const authRoutes = require('./routes/auth');
 app.use('/auth', authRoutes);
+
+const bookRoutes = require('./routes/livres');
+app.use('/api/books', bookRoutes);
+
+const empruntRoutes = require('./routes/emprunt');
+app.use('/emprunts', empruntRoutes);
+
 
 // Basic test route
 app.get('/', (req, res) => {

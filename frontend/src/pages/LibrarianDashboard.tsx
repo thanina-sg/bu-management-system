@@ -17,7 +17,11 @@ const librarianSidebarItems = [
   { id: 'settings', label: 'Settings', icon: '⚙️' },
 ];
 
-export const LibrarianDashboard = () => {
+type LibrarianDashboardProps = {
+  onLogout?: () => void;
+};
+
+export const LibrarianDashboard = ({ onLogout }: LibrarianDashboardProps) => {
   const [activeSection, setActiveSection] = useState<LibrarianSection>('overview');
 
   const renderContent = () => {
@@ -70,6 +74,7 @@ export const LibrarianDashboard = () => {
         activeItem={activeSection}
         onItemClick={(id: string) => setActiveSection(id as LibrarianSection)}
         userRole="Librarian"
+        onLogout={onLogout}
         userName="Nina Sg"
       />
 

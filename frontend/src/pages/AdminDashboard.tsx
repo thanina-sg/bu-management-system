@@ -8,7 +8,11 @@ import type { AdminMetrics } from '../types/admin';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000';
 
-export const AdminDashboard = () => {
+type AdminDashboardProps = {
+  onLogout?: () => void;
+};
+
+export const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,6 +57,7 @@ export const AdminDashboard = () => {
         activeItem={activeTab} 
         onItemClick={setActiveTab} 
         userRole="ADMINISTRATEUR"
+        onLogout={onLogout}
         items={[
           { id: 'dashboard', label: 'Vue d\'ensemble', icon: '📊' },
           { id: 'books', label: 'Catalogue', icon: '📚' },

@@ -10,6 +10,7 @@ interface SidebarProps {
   onItemClick: (itemId: string) => void;
   userRole: string;
   userName?: string;
+  onLogout?: () => void;
 }
 
 export const Sidebar = ({
@@ -18,6 +19,7 @@ export const Sidebar = ({
   onItemClick,
   userRole,
   userName = 'User',
+  onLogout,
 }: SidebarProps) => {
   return (
     <div className="w-64 bg-gradient-to-b from-blue-900 to-blue-800 min-h-screen text-white shadow-lg flex flex-col">
@@ -46,7 +48,7 @@ export const Sidebar = ({
       </nav>
 
       {/* User Profile Footer */}
-      <div className="p-4 border-t border-blue-700 bg-blue-800">
+      <div className="p-4 border-t border-blue-700 bg-blue-800 space-y-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center font-bold">
             {userName.charAt(0).toUpperCase()}
@@ -56,6 +58,14 @@ export const Sidebar = ({
             <p className="text-xs text-blue-200 capitalize">{userRole}</p>
           </div>
         </div>
+        {onLogout && (
+          <button
+            onClick={onLogout}
+            className="w-full px-4 py-2 rounded-md bg-rose-500 text-white text-xs font-black uppercase tracking-[0.2em] hover:bg-rose-600 transition-all"
+          >
+            Se déconnecter
+          </button>
+        )}
       </div>
     </div>
   );
