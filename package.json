@@ -3,8 +3,11 @@
     "concurrently": "^9.2.1"
   },
   "scripts": {
-  "frontend": "npm run dev --prefix frontend",
-  "backend": "npm run dev --prefix backend",
-  "dev": "concurrently \"npm run backend\" \"npm run frontend\""
-}
+    "frontend": "npm run dev --prefix frontend",
+    "backend": "npm run dev --prefix backend",
+    "dev": "concurrently \"npm run backend\" \"npm run frontend\""
+  },
+  "dependencies": {
+    "ollama": "^0.6.3"
+  }
 }
