@@ -1,0 +1,125 @@
+import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { BOOKS, CATEGORIES, STATUSES } from "../lib/books";
+import { applyFilters, type Filters } from "../lib/filter";
+
+export function HomePage() {
+  const [filters, setFilters] = useState<Filters>({
+    q: "",
+    category: "All Categories",
+    status: "All Status",
+  });
+
+  const filtered = useMemo(() => applyFilters(BOOKS, filters), [filters]);
+
+  return (
+    <div className="mx-auto max-w-6xl px-6 py-10">
+      <div className="mx-auto max-w-3xl text-center">
+        <h1 className="font-serif text-5xl tracking-tight text-ink-900">Academic Resource Catalog</h1>
+        <p className="mx-auto mt-4 max-w-2xl text-base text-ink-500">
+          Search thousands of books, journals, and academic papers in the university&apos;s digital and physical collections.
+        </p>
+
+        <div className="mt-6">
+          <input
+            value={filters.q}
+            onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
+            placeholder="Search by title, author, or ISBN..."
+            className="w-full rounded-lg border border-ink-100 bg-white px-4 py-3 text-sm text-ink-900 shadow-soft outline-none placeholder:text-ink-200 focus:border-brand-500"
+          />
+        </div>
+      </div>
+
+      <div className="mt-8 rounded-lg border border-ink-100 bg-white p-3 shadow-soft">
+        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-xs font-semibold text-ink-500">▽ Refine Results</div>
+
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <div>
+              <select
+                value={filters.category}
+                onChange={(e) =>
+                  setFilters((f) => ({ ...f, category: e.target.value as Filters["category"] }))
+                }
+                className="w-full rounded-md border border-ink-100 bg-white px-3 py-2 text-xs text-ink-900 outline-none focus:border-brand-500 sm:w-44"
+              >
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <select
+                value={filters.status}
+                onChange={(e) =>
+                  setFilters((f) => ({ ...f, status: e.target.value as Filters["status"] }))
+                }
+                className="w-full rounded-md border border-ink-100 bg-white px-3 py-2 text-xs text-ink-900 outline-none focus:border-brand-500 sm:w-40"
+              >
+                {STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <section className="mt-6">
+        <div className="mb-4 text-xs text-ink-500">
+          Showing <span className="font-semibold text-ink-700">{filtered.length}</span> results
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {filtered.map((b) => (
+            <article key={b.id} className="rounded-lg border border-ink-100 bg-white p-3 shadow-soft">
+              <div className="relative">
+                <div
+                  className={
+                    b.status === "Available"
+                      ? "absolute right-1 top-1 rounded bg-emerald-100 px-2 py-1 text-[10px] font-semibold text-emerald-700"
+                      : "absolute right-1 top-1 rounded bg-rose-100 px-2 py-1 text-[10px] font-semibold text-rose-700"
+                  }
+                >
+                  {b.status}
+                </div>
+
+                {b.coverUrl ? (
+                  <img
+                    src={b.coverUrl}
+                    alt={b.title}
+                    className="h-72 w-full rounded border border-ink-100 object-cover"
+                  />
+                ) : (
+                  <div className="flex h-72 items-center justify-center rounded border border-ink-100 bg-surface-100 text-sm font-semibold text-ink-500">
+                    No Cover
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-4 text-[10px] font-semibold uppercase tracking-wide text-ink-500">
+                {b.category}
+              </div>
+              <h3 className="mt-1 line-clamp-2 font-serif text-2xl leading-tight text-ink-900">{b.title}</h3>
+              <p className="mt-1 text-sm text-ink-500">{b.author}</p>
+
+              <div className="mt-4">
+                <Link
+                  to={`/book/${b.id}`}
+                  className="inline-flex w-full items-center justify-center rounded bg-brand-700 px-4 py-2 text-xs font-semibold text-white hover:bg-brand-600"
+                >
+                  View Details
+                </Link>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}

@@ -1,24 +1,30 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+:root {
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 html,
 body {
   height: 100%;
-  width: 100%;
 }
 
 body {
-  font-family: system-ui, -apple-system, sans-serif;
-  background-color: #f8f9fa;
-  color: #333;
+  margin: 0;
+  font-family: theme(fontFamily.sans);
+  color: #0b1220;
+  background: #f3f5f9;
 }
 
 #root {
-  display: flex;
   min-height: 100vh;
+}
+
+* {
+  box-sizing: border-box;
 }
