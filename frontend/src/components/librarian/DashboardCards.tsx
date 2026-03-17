@@ -1,14 +1,18 @@
-import { BOOKS, LOANS, RESERVATIONS, USERS } from "../../lib/books";
 import type { LoggedInRole } from "./types";
 
-export function DashboardCards({ role }: { role: LoggedInRole }) {
-  const totalBooks = BOOKS.length;
-  const availableBooks = BOOKS.filter((b) => b.status === "Available").length;
-  const borrowedBooks = BOOKS.filter((b) => b.status === "Borrowed").length;
-  const activeLoans = LOANS.filter((l) => l.status === "Active").length;
-  const overdueLoans = LOANS.filter((l) => l.status === "Overdue").length;
-  const pendingReservations = RESERVATIONS.filter((r) => r.status === "Pending").length;
-  const totalUsers = USERS.length;
+export function DashboardCards({ role, books, loans, reservations, users }: { role: LoggedInRole; books?: any[]; loans?: any[]; reservations?: any[]; users?: any[] }) {
+  const booksData = books || [];
+  const loansData = loans || [];
+  const reservationsData = reservations || [];
+  const usersData = users || [];
+
+  const totalBooks = booksData.length;
+  const availableBooks = booksData.filter((b: any) => b.status === "Available" || b.disponible === true).length;
+  const borrowedBooks = booksData.filter((b: any) => b.status === "Borrowed" || b.disponible === false).length;
+  const activeLoans = loansData.filter((l: any) => l.statut === "ACTIF" || l.status === "Active").length;
+  const overdueLoans = loansData.filter((l: any) => l.statut === "EN_RETARD" || l.status === "Overdue").length;
+  const pendingReservations = reservationsData.filter((r: any) => r.statut === "EN_ATTENTE" || r.status === "Pending").length;
+  const totalUsers = usersData.length;
 
   const cards: { label: string; value: number; accent: string; sub?: string; adminOnly?: boolean }[] = [
     { label: "Total Books", value: totalBooks, accent: "text-brand-700", sub: `${availableBooks} available` },

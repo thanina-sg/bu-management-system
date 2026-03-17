@@ -1,21 +1,45 @@
-import { useState } from "react";
-import { RESERVATIONS, USERS, type Reservation } from "../../lib/books";
+import { useEffect, useState } from "react";
+import { reservations as reservationsAPI, users as usersAPI, type Reservation } from "../../lib/api";
 import { ReservationStatusBadge } from "../StatusBadges";
 
 export function ReservationsPanel() {
-  const [reservations, setReservations] = useState<Reservation[]>(RESERVATIONS);
+  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editStatus, setEditStatus] = useState<Reservation["status"]>("Pending");
+  const [editStatus, setEditStatus] = useState<'EN_ATTENTE' | 'PRETE' | 'ANNULEE'>('EN_ATTENTE');
   const [toast, setToast] = useState<string | null>(null);
 
-  const userName = (id: string) => USERS.find((s) => s.id === id)?.name ?? id;
+  // Fetch data on mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [resData, userData] = await Promise.all([
+          reservationsAPI.getAll(),
+          usersAPI.getAll()
+        ]);
+        setReservations(resData);
+        setUsers(userData);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchData();
+  }, []);
 
-  const startEdit = (r: Reservation) => { setEditingId(r.id); setEditStatus(r.status); };
+  const userName = (id: string) => users.find((s) => s.id === id)?.name ?? users.find((s) => s.id === id)?.nom ?? id;
+
+  const startEdit = (r: Reservation) => { setEditingId(r.id); setEditStatus(r.statut); };
   const cancelEdit = () => setEditingId(null);
-  const saveEdit = (id: string) => {
-    setReservations((prev) => prev.map((r) => (r.id === id ? { ...r, status: editStatus } : r)));
-    setEditingId(null);
-    showToast(`Reservation ${id} updated to "${editStatus}".`);
+  const saveEdit = async (id: string) => {
+    try {
+      await reservationsAPI.update(id, editStatus as any);
+      setReservations((prev) => prev.map((r) => (r.id === id ? { ...r, statut: editStatus } : r)));
+      setEditingId(null);
+      showToast(`Reservation ${id} updated to "${editStatus}".`);
+    } catch (err) {
+      showToast("Failed to update reservation.");
+      console.error(err);
+    }
   };
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
@@ -47,17 +71,17 @@ export function ReservationsPanel() {
               {reservations.map((r) => (
                 <tr key={r.id} className="border-b border-ink-100 last:border-b-0">
                   <td className="px-5 py-3 text-xs font-medium text-ink-700">{r.id}</td>
-                  <td className="px-5 py-3"><div className="text-xs font-semibold text-ink-900">{userName(r.studentId)}</div><div className="text-[10px] text-ink-500">{r.studentId}</div></td>
-                  <td className="px-5 py-3"><div className="max-w-[200px] truncate text-xs text-ink-900">{r.bookTitle}</div><div className="text-[10px] text-ink-500">{r.isbn}</div></td>
-                  <td className="px-5 py-3 text-xs text-ink-700">{r.date}</td>
-                  <td className="px-5 py-3 text-xs font-semibold text-ink-700">#{r.queuePosition}</td>
+                  <td className="px-5 py-3"><div className="text-xs font-semibold text-ink-900">{userName(r.id_utilisateur)}</div><div className="text-[10px] text-ink-500">{r.id_utilisateur}</div></td>
+                  <td className="px-5 py-3"><div className="max-w-[200px] truncate text-xs text-ink-900">{r.titre_livre}</div><div className="text-[10px] text-ink-500">{r.isbn}</div></td>
+                  <td className="px-5 py-3 text-xs text-ink-700">{r.date_reservation}</td>
+                  <td className="px-5 py-3 text-xs font-semibold text-ink-700">#{r.position_file}</td>
                   <td className="px-5 py-3">
                     {editingId === r.id ? (
-                      <select value={editStatus} onChange={(e) => setEditStatus(e.target.value as Reservation["status"])}
+                      <select value={editStatus} onChange={(e) => setEditStatus(e.target.value as 'EN_ATTENTE' | 'PRETE' | 'ANNULEE')}
                         className="rounded border border-ink-100 bg-white px-2 py-1 text-xs text-ink-900 outline-none focus:border-brand-500">
-                        <option value="Pending">Pending</option><option value="Ready">Ready</option><option value="Cancelled">Cancelled</option>
+                        <option value="EN_ATTENTE">Pending</option><option value="PRETE">Ready</option><option value="ANNULEE">Cancelled</option>
                       </select>
-                    ) : <ReservationStatusBadge status={r.status} />}
+                    ) : <ReservationStatusBadge status={r.statut} />}
                   </td>
                   <td className="px-5 py-3">
                     {editingId === r.id ? (
@@ -78,18 +102,18 @@ export function ReservationsPanel() {
             <div key={r.id} className="rounded-lg border border-ink-100 bg-surface-50 p-4">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="text-xs font-semibold text-ink-900">{r.bookTitle}</div>
-                  <div className="mt-0.5 text-[10px] text-ink-500">{userName(r.studentId)} &middot; {r.studentId}</div>
+                  <div className="text-xs font-semibold text-ink-900">{r.titre_livre}</div>
+                  <div className="mt-0.5 text-[10px] text-ink-500">{userName(r.id_utilisateur)} &middot; {r.id_utilisateur}</div>
                 </div>
-                <ReservationStatusBadge status={r.status} />
+                <ReservationStatusBadge status={r.statut} />
               </div>
-              <div className="mt-2 flex gap-4 text-[10px] text-ink-500"><span>{r.id}</span><span>{r.date}</span><span>#{r.queuePosition}</span></div>
+              <div className="mt-2 flex gap-4 text-[10px] text-ink-500"><span>{r.id}</span><span>{r.date_reservation}</span><span>#{r.position_file}</span></div>
               <div className="mt-3">
                 {editingId === r.id ? (
                   <div className="flex items-center gap-2">
-                    <select value={editStatus} onChange={(e) => setEditStatus(e.target.value as Reservation["status"])}
+                    <select value={editStatus} onChange={(e) => setEditStatus(e.target.value as 'EN_ATTENTE' | 'PRETE' | 'ANNULEE')}
                       className="rounded border border-ink-100 bg-white px-2 py-1 text-xs text-ink-900 outline-none focus:border-brand-500">
-                      <option value="Pending">Pending</option><option value="Ready">Ready</option><option value="Cancelled">Cancelled</option>
+                      <option value="EN_ATTENTE">Pending</option><option value="PRETE">Ready</option><option value="ANNULEE">Cancelled</option>
                     </select>
                     <button onClick={() => saveEdit(r.id)} className="rounded bg-brand-700 px-3 py-1 text-[10px] font-semibold text-white hover:bg-brand-600">Save</button>
                     <button onClick={cancelEdit} className="rounded border border-ink-100 px-3 py-1 text-[10px] font-semibold text-ink-500 hover:bg-surface-50">Cancel</button>

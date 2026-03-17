@@ -1,19 +1,33 @@
 import { useState } from "react";
-import { STUDENT_ACCOUNTS, USERS, type User } from "../lib/books";
+import { auth, type User, APIError } from "../lib/api";
 
 export function StudentLoginView({ onLogin }: { onLogin: (user: User) => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = () => {
-    if (!email.trim() || !password.trim()) { setError("Please fill in all fields."); return; }
-    const account = STUDENT_ACCOUNTS.find((a) => a.email === email.trim() && a.password === password);
-    if (!account) { setError("Invalid credentials."); return; }
-    const user = USERS.find((u) => u.id === account.userId);
-    if (!user) { setError("User not found."); return; }
+  const handleSubmit = async () => {
+    if (!email.trim() || !password.trim()) {
+      setError("Please fill in all fields.");
+      return;
+    }
+
+    setIsLoading(true);
     setError("");
-    onLogin(user);
+
+    try {
+      const user = await auth.loginStudent(email, password);
+      onLogin(user);
+    } catch (err) {
+      if (err instanceof APIError) {
+        setError(err.message || "Login failed. Please try again.");
+      } else {
+        setError("An unexpected error occurred. Please try again.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -54,9 +68,10 @@ export function StudentLoginView({ onLogin }: { onLogin: (user: User) => void })
         <button
           type="button"
           onClick={handleSubmit}
-          className="w-full rounded-lg bg-brand-700 px-4 py-2.5 text-xs font-semibold text-white shadow-soft hover:bg-brand-600"
+          disabled={isLoading}
+          className="w-full rounded-lg bg-brand-700 px-4 py-2.5 text-xs font-semibold text-white shadow-soft hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Sign In
+          {isLoading ? "Signing in..." : "Sign In"}
         </button>
       </div>
 

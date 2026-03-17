@@ -1,29 +1,54 @@
-import { useState } from "react";
-import { USERS, type User, type UserRole } from "../../lib/books";
+import { useEffect, useState } from "react";
+import { users as usersAPI, type User, type UserRole } from "../../lib/api";
 import { RoleBadge } from "../StatusBadges";
 import { AddUserForm } from "./AddUserForm";
 
 export function UsersPanel() {
-  const [users, setUsers] = useState<User[]>(USERS);
+  const [users, setUsers] = useState<User[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editFields, setEditFields] = useState<{ name: string; email: string; role: UserRole }>({ name: "", email: "", role: "Student" });
+  const [editFields, setEditFields] = useState<{ name?: string; email: string; role: UserRole }>({ email: "", role: "ETUDIANT" });
   const [toast, setToast] = useState<string | null>(null);
+
+  // Fetch users on mount
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const data = await usersAPI.getAll();
+        setUsers(data);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchUsers();
+  }, []);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
 
   const startEdit = (u: User) => { setEditingId(u.id); setEditFields({ name: u.name, email: u.email, role: u.role }); };
   const cancelEdit = () => setEditingId(null);
 
-  const saveEdit = (id: string) => {
-    setUsers((prev) => prev.map((u) => u.id === id ? { ...u, ...editFields } : u));
-    setEditingId(null);
-    showToast(`User ${id} updated.`);
+  const saveEdit = async (id: string) => {
+    try {
+      await usersAPI.update(id, editFields);
+      setUsers((prev) => prev.map((u) => u.id === id ? { ...u, ...editFields } : u));
+      setEditingId(null);
+      showToast(`User ${id} updated.`);
+    } catch (err) {
+      showToast("Failed to update user.");
+      console.error(err);
+    }
   };
 
-  const deleteUser = (id: string) => {
-    const user = users.find((u) => u.id === id);
-    setUsers((prev) => prev.filter((u) => u.id !== id));
-    showToast(`"${user?.name}" removed.`);
+  const deleteUser = async (id: string) => {
+    try {
+      await usersAPI.delete(id);
+      const user = users.find((u) => u.id === id);
+      setUsers((prev) => prev.filter((u) => u.id !== id));
+      showToast(`"${user?.name}" removed.`);
+    } catch (err) {
+      showToast("Failed to delete user.");
+      console.error(err);
+    }
   };
 
   const handleAddUser = (user: User) => {
@@ -32,10 +57,10 @@ export function UsersPanel() {
   };
 
   const roleStats = {
-    Student: users.filter((u) => u.role === "Student").length,
-    Teacher: users.filter((u) => u.role === "Teacher").length,
-    Librarian: users.filter((u) => u.role === "Librarian").length,
-    Admin: users.filter((u) => u.role === "Admin").length,
+    Student: users.filter((u) => u.role === "ETUDIANT").length,
+    Teacher: users.filter((u) => u.role === "ENSEIGNANT").length,
+    Librarian: users.filter((u) => u.role === "BIBLIOTHECAIRE").length,
+    Admin: users.filter((u) => u.role === "ADMIN").length,
   };
 
   return (
@@ -87,7 +112,7 @@ export function UsersPanel() {
                     {editingId === u.id ? (
                       <select value={editFields.role} onChange={(e) => setEditFields((f) => ({ ...f, role: e.target.value as UserRole }))}
                         className="rounded border border-ink-100 bg-white px-2 py-1 text-xs text-ink-900 outline-none focus:border-brand-500">
-                        <option value="Student">Student</option><option value="Teacher">Teacher</option><option value="Librarian">Librarian</option><option value="Admin">Admin</option>
+                        <option value="ETUDIANT">Student</option><option value="ENSEIGNANT">Teacher</option><option value="BIBLIOTHECAIRE">Librarian</option><option value="ADMIN">Admin</option>
                       </select>
                     ) : <RoleBadge role={u.role} />}
                   </td>
@@ -127,7 +152,7 @@ export function UsersPanel() {
                     <input value={editFields.name} onChange={(e) => setEditFields((f) => ({ ...f, name: e.target.value }))} placeholder="Name" className="w-full rounded border border-ink-100 bg-white px-2 py-1 text-xs text-ink-900 outline-none focus:border-brand-500" />
                     <input value={editFields.email} onChange={(e) => setEditFields((f) => ({ ...f, email: e.target.value }))} placeholder="Email" className="w-full rounded border border-ink-100 bg-white px-2 py-1 text-xs text-ink-900 outline-none focus:border-brand-500" />
                     <select value={editFields.role} onChange={(e) => setEditFields((f) => ({ ...f, role: e.target.value as UserRole }))} className="w-full rounded border border-ink-100 bg-white px-2 py-1 text-xs text-ink-900 outline-none focus:border-brand-500">
-                      <option value="Student">Student</option><option value="Teacher">Teacher</option><option value="Librarian">Librarian</option><option value="Admin">Admin</option>
+                      <option value="ETUDIANT">Student</option><option value="ENSEIGNANT">Teacher</option><option value="BIBLIOTHECAIRE">Librarian</option><option value="ADMIN">Admin</option>
                     </select>
                     <div className="flex gap-2">
                       <button onClick={() => saveEdit(u.id)} className="rounded bg-brand-700 px-3 py-1 text-[10px] font-semibold text-white hover:bg-brand-600">Save</button>
