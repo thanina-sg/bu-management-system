@@ -1,101 +1,156 @@
 const supabase = require('../db');
 
-/**
- * Enregistre un nouvel emprunt ou crée une réservation si aucun exemplaire n'est disponible
- */
-const creerEmprunt = async (id_utilisateur, isbn) => {
-  // 1. Tenter de trouver UN exemplaire disponible
+// --- GET LOANS (list, optionally filtered by student) ---
+const getLoans = async (filters = {}) => {
+  const { studentId, status } = filters;
+
+  let query = supabase.from('emprunt').select(`
+    id,
+    id_utilisateur,
+    id_exemplaire,
+    date_emprunt,
+    date_retour_prevue,
+    date_retour_reelle,
+    statut
+  `);
+
+  if (studentId) query = query.eq('id_utilisateur', studentId);
+  if (status) query = query.eq('statut', status);
+
+  const { data, error } = await query;
+  if (error) throw error;
+
+  // Enrich with book and user info
+  const loans = await Promise.all(data.map(async (loan) => {
+    const { data: book } = await supabase
+      .from('exemplaire')
+      .select('isbn')
+      .eq('id_exemplaire', loan.id_exemplaire)
+      .single();
+
+    const { data: bookDetail } = await supabase
+      .from('livre')
+      .select('titre')
+      .eq('isbn', book?.isbn)
+      .single();
+
+    return {
+      id: loan.id,
+      studentId: loan.id_utilisateur,
+      isbn: book?.isbn,
+      bookTitle: bookDetail?.titre,
+      loanDate: loan.date_emprunt,
+      returnDateExpected: loan.date_retour_prevue,
+      returnDateActual: loan.date_retour_reelle,
+      status: loan.statut === 'ACTIF' ? 'Active' : loan.statut === 'RETOURNE' ? 'Returned' : 'Overdue'
+    };
+  }));
+
+  return loans;
+};
+
+// --- POST LOAN (create new loan) ---
+const createLoan = async (studentId, isbn, returnDate) => {
+  // Get available exemplaire
   const { data: exemplaire, error: exError } = await supabase
     .from('exemplaire')
     .select('id_exemplaire')
     .eq('isbn', isbn)
     .eq('disponibilite', true)
-    .limit(1)
-    .maybeSingle(); // Retourne null sans erreur si aucun exemplaire n'est trouvé
+    .single();
 
-  // --- CAS A : UN EXEMPLAIRE EST DISPONIBLE -> ON FAIT L'EMPRUNT ---
-  if (exemplaire) {
-    const id_exemplaire = exemplaire.id_exemplaire;
+  if (exError || !exemplaire) throw new Error("Aucun exemplaire disponible");
 
-    // Calcul de la date de retour (J + 14 jours)
-    const dateRetourPrevue = new Date();
-    dateRetourPrevue.setDate(dateRetourPrevue.getDate() + 14);
+  // Create loan
+  const { data: loan, error: loanError } = await supabase
+    .from('emprunt')
+    .insert([{
+      id_utilisateur: studentId,
+      id_exemplaire: exemplaire.id_exemplaire,
+      date_emprunt: new Date().toISOString().split('T')[0],
+      date_retour_prevue: returnDate,
+      statut: 'ACTIF'
+    }])
+    .select();
 
-    // Créer l'emprunt
-    const { data: emprunt, error: emError } = await supabase
-      .from('emprunt')
-      .insert([{
-        id_utilisateur: id_utilisateur,
-        id_exemplaire: id_exemplaire,
-        date_retour_prevue: dateRetourPrevue.toISOString().split('T')[0]
-      }])
-      .select()
-      .single();
+  if (loanError) throw loanError;
 
-    if (emError) throw emError;
+  // Update exemplaire availability
+  await supabase
+    .from('exemplaire')
+    .update({ disponibilite: false })
+    .eq('id_exemplaire', exemplaire.id_exemplaire);
 
-    // Mettre à jour la disponibilité de l'exemplaire à 'false'
-    const { error: upError } = await supabase
-      .from('exemplaire')
-      .update({ disponibilite: false })
-      .eq('id_exemplaire', id_exemplaire);
+  const { data: bookDetail } = await supabase
+    .from('livre')
+    .select('titre')
+    .eq('isbn', isbn)
+    .single();
 
-    if (upError) throw upError;
-
-    return { type: 'EMPRUNT', data: emprunt };
-  } 
-
-  // --- CAS B : AUCUN EXEMPLAIRE DISPONIBLE -> ON CRÉE UNE RÉSERVATION ---
-  else {
-    // Calculer la position dans la file (nombre de résas EN_ATTENTE pour cet ISBN + 1)
-    const { count, error: countError } = await supabase
-      .from('reservation')
-      .select('*', { count: 'exact', head: true })
-      .eq('isbn', isbn)
-      .eq('statut', 'EN_ATTENTE');
-
-    if (countError) throw countError;
-
-    const nouvellePosition = (count || 0) + 1;
-
-    // Créer la réservation
-    const { data: reservation, error: resError } = await supabase
-      .from('reservation')
-      .insert([{
-        id_utilisateur,
-        isbn,
-        position_file: nouvellePosition,
-        statut: 'EN_ATTENTE'
-      }])
-      .select()
-      .single();
-
-    if (resError) throw resError;
-
-    return { type: 'RESERVATION', data: reservation };
-  }
+  return {
+    id: loan[0].id,
+    studentId: loan[0].id_utilisateur,
+    isbn,
+    bookTitle: bookDetail?.titre,
+    loanDate: loan[0].date_emprunt,
+    returnDateExpected: loan[0].date_retour_prevue,
+    returnDateActual: null,
+    status: 'Active'
+  };
 };
 
-/**
- * Récupérer les emprunts en cours d'un utilisateur
- */
-const getEmpruntsByUserId = async (id_utilisateur) => {
-  const { data, error } = await supabase
+// --- PUT LOAN RETURN ---
+const returnLoan = async (loanId, returnDate) => {
+  const { data: loan, error: fetchError } = await supabase
     .from('emprunt')
-    .select(`
-      *,
-      exemplaire (
-        livre (titre, auteur)
-      )
-    `)
-    .eq('id_utilisateur', id_utilisateur)
-    .is('date_retour_reelle', null);
+    .select('id_exemplaire, id_utilisateur, date_retour_prevue')
+    .eq('id', loanId)
+    .single();
 
-  if (error) throw error;
-  return data;
+  if (fetchError) throw fetchError;
+
+  // Update loan
+  const { data: updated, error: updateError } = await supabase
+    .from('emprunt')
+    .update({
+      date_retour_reelle: returnDate,
+      statut: 'RETOURNE'
+    })
+    .eq('id', loanId)
+    .select();
+
+  if (updateError) throw updateError;
+
+  // Mark exemplaire as available
+  await supabase
+    .from('exemplaire')
+    .update({ disponibilite: true })
+    .eq('id_exemplaire', loan.id_exemplaire);
+
+  // Check for overdue and create penalty if needed
+  const isOverdue = new Date(returnDate) > new Date(loan.date_retour_prevue);
+  if (isOverdue) {
+    const daysOverdue = Math.ceil(
+      (new Date(returnDate) - new Date(loan.date_retour_prevue)) / (1000 * 60 * 60 * 24)
+    );
+    
+    await supabase.from('penalite').insert([{
+      id_utilisateur: loan.id_utilisateur,
+      motif: `Retard de ${daysOverdue} jours`,
+      points_montant: daysOverdue * 5,
+      statut: 'A_PAYER'
+    }]);
+  }
+
+  return {
+    id: updated[0].id,
+    status: 'Returned',
+    isLate: isOverdue
+  };
 };
 
 module.exports = {
-  creerEmprunt,
-  getEmpruntsByUserId
+  getLoans,
+  createLoan,
+  returnLoan
 };

@@ -1,12 +1,14 @@
 const express = require('express');
 const router = express.Router();
-// On importe les deux fonctions
-const { effectuerEmprunt, listerEmprunts } = require('../controllers/empruntController');
+const { getAllLoans, createNewLoan, returnBookLoan } = require('../controllers/empruntController');
 
-// Route pour créer un emprunt
-router.post('/', effectuerEmprunt);
+// GET /api/loans
+router.get('/', getAllLoans);
 
-// Route pour lister les emprunts (C'est celle-ci qui manquait !)
-router.get('/', listerEmprunts);
+// POST /api/loans
+router.post('/', createNewLoan);
+
+// PUT /api/loans/:id/return
+router.put('/:id/return', returnBookLoan);
 
 module.exports = router;

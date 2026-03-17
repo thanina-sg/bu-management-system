@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { RESERVATIONS } from "../lib/books";
+import { reservations as reservationsAPI, auth, APIError } from "../lib/api";
 
 export function ReservationModal({
   bookTitle,
@@ -11,23 +11,41 @@ export function ReservationModal({
   onClose: () => void;
 }) {
   const [submitted, setSubmitted] = useState(false);
-  const [studentId, setStudentId] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [queuePosition, setQueuePosition] = useState(0);
 
-  const existingReservations = RESERVATIONS.filter((r) => r.isbn === isbn);
-  const queuePosition = existingReservations.length + 1;
-
-  const handleReserve = () => {
-    if (!studentId.trim()) {
-      setError("Please enter your Student ID.");
-      return;
-    }
-    if (!/^[ST]-\d+$/.test(studentId.trim())) {
-      setError("Invalid Student ID format. Use S-XXXXXX or T-XXXXXX.");
-      return;
-    }
+  const handleReserve = async () => {
+    setIsLoading(true);
     setError("");
-    setSubmitted(true);
+
+    try {
+      // Get current user
+      const user = auth.getStoredUser();
+      if (!user) {
+        setError("You must be logged in to make a reservation.");
+        setIsLoading(false);
+        return;
+      }
+
+      // Create reservation
+      const reservation = await reservationsAPI.create({
+        studentId: user.id,
+        isbn,
+      });
+
+      setQueuePosition(reservation.position_file || reservation.queuePosition || 0);
+      setSubmitted(true);
+    } catch (err) {
+      if (err instanceof APIError) {
+        setError(err.message || "Failed to create reservation. Please try again.");
+      } else {
+        setError("An unexpected error occurred. Please try again.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+
   };
 
   return (
@@ -49,19 +67,6 @@ export function ReservationModal({
               <div className="rounded-lg border border-ink-100 bg-surface-50 p-3">
                 <div className="text-xs font-semibold text-ink-900">{bookTitle}</div>
                 <div className="mt-0.5 text-[10px] text-ink-500">ISBN: {isbn}</div>
-                <div className="mt-1 text-[10px] text-amber-600 font-semibold">
-                  Current queue position: #{queuePosition}
-                </div>
-              </div>
-
-              <div className="mt-4">
-                <label className="mb-2 block text-xs font-medium text-ink-500">Student ID</label>
-                <input
-                  value={studentId}
-                  onChange={(e) => setStudentId(e.target.value)}
-                  placeholder="e.g. S-100234"
-                  className="w-full rounded-lg border border-ink-100 bg-white px-3 py-2 text-sm text-ink-900 outline-none focus:border-brand-500"
-                />
               </div>
 
               {error && (
@@ -69,20 +74,26 @@ export function ReservationModal({
                   {error}
                 </div>
               )}
+
+              <p className="mt-4 text-xs text-ink-500">
+                You will be notified when this resource becomes available.
+              </p>
             </div>
 
             <div className="flex items-center justify-end gap-3 border-t border-ink-100 px-5 py-3">
               <button
                 onClick={onClose}
                 className="rounded-lg border border-ink-100 px-4 py-2 text-xs font-semibold text-ink-700 hover:bg-surface-50"
+                disabled={isLoading}
               >
                 Cancel
               </button>
               <button
                 onClick={handleReserve}
-                className="rounded-lg bg-brand-700 px-4 py-2 text-xs font-semibold text-white hover:bg-brand-600"
+                disabled={isLoading}
+                className="rounded-lg bg-brand-700 px-4 py-2 text-xs font-semibold text-white hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Confirm Reservation
+                {isLoading ? "Processing..." : "Confirm Reservation"}
               </button>
             </div>
           </>
@@ -99,8 +110,7 @@ export function ReservationModal({
             <div className="mt-4 rounded-lg border border-ink-100 bg-surface-50 p-3 text-left">
               <div className="text-xs font-semibold text-ink-900">{bookTitle}</div>
               <div className="mt-1 flex gap-4 text-[10px] text-ink-500">
-                <span>Student: {studentId}</span>
-                <span>Date: 2026-03-17</span>
+                <span>Date: {new Date().toISOString().split('T')[0]}</span>
               </div>
             </div>
             <p className="mt-3 text-[11px] text-ink-500">

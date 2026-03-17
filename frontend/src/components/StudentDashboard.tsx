@@ -1,28 +1,76 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { BOOKS, LOANS, RESERVATIONS, type Reservation, type User } from "../lib/books";
+import { type User, type Loan, type Reservation, type Book } from "../lib/api";
+import { loans as loansAPI, reservations as reservationsAPI, books as booksAPI } from "../lib/api";
 import { LoanStatusBadge, ReservationStatusBadge } from "./StatusBadges";
 
 type StudentTab = "loans" | "reservations";
 
 export function StudentDashboard({ user, onLogout }: { user: User; onLogout: () => void }) {
   const [tab, setTab] = useState<StudentTab>("loans");
-  const [reservations, setReservations] = useState<Reservation[]>(RESERVATIONS);
+  const [userLoans, setUserLoans] = useState<Loan[]>([]);
+  const [userReservations, setUserReservations] = useState<Reservation[]>([]);
+  const [books, setBooks] = useState<Map<string, Book>>(new Map());
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
-  const userLoans = LOANS.filter((l) => l.studentId === user.id);
-  const userReservations = reservations.filter((r) => r.studentId === user.id && r.status !== "Cancelled");
+  // Fetch all data when component mounts or user changes
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        // Fetch loans, reservations, and catalog
+        const [loansData, reservationsData, booksData] = await Promise.all([
+          loansAPI.getAll({ studentId: user.id }),
+          reservationsAPI.getAll({ studentId: user.id }),
+          booksAPI.getAll(),
+        ]);
 
-  const activeLoans = userLoans.filter((l) => l.status === "Active" || l.status === "Overdue").length;
-  const returnedLoans = userLoans.filter((l) => l.status === "Returned").length;
+        setUserLoans(loansData);
+        
+        // Filter reservations to exclude cancelled ones
+        const activeReservations = reservationsData.filter(r => r.statut !== 'ANNULEE');
+        setUserReservations(activeReservations);
 
-  const initials = user.name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+        // Create a map of ISBN -> Book for quick lookup
+        const booksMap = new Map<string, Book>();
+        booksData.forEach(book => {
+          booksMap.set(book.isbn || book.id || '', book);
+        });
+        setBooks(booksMap);
+      } catch (err) {
+        setError("Failed to load your dashboard. Please try again.");
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
+    fetchData();
+  }, [user.id]);
 
-  const cancelReservation = (id: string) => {
-    setReservations((prev) => prev.map((r) => r.id === id ? { ...r, status: "Cancelled" as const } : r));
-    showToast("Reservation cancelled.");
+  const activeLoans = userLoans.filter((l) => l.statut === "ACTIF" || l.statut === "EN_RETARD").length;
+  const returnedLoans = userLoans.filter((l) => l.statut === "RETOURNE").length;
+
+  const initials = (user.name || user.nom || "").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const cancelReservation = async (id: string) => {
+    try {
+      await reservationsAPI.update(id, 'ANNULEE' as any);
+      setUserReservations((prev) => prev.filter((r) => r.id !== id));
+      showToast("Reservation cancelled.");
+    } catch (err) {
+      showToast("Failed to cancel reservation.");
+      console.error(err);
+    }
+
   };
 
   return (
@@ -89,7 +137,19 @@ export function StudentDashboard({ user, onLogout }: { user: User; onLogout: () 
 
       {/* Content */}
       <div className="max-h-[360px] overflow-y-auto px-5 py-4">
-        {tab === "loans" && (
+        {isLoading && (
+          <div className="py-6 text-center">
+            <div className="text-[10px] text-ink-500">Loading your dashboard...</div>
+          </div>
+        )}
+
+        {error && (
+          <div className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-[10px] text-rose-700">
+            {error}
+          </div>
+        )}
+
+        {!isLoading && !error && tab === "loans" && (
           <>
             {userLoans.length === 0 ? (
               <div className="py-6 text-center">
@@ -102,7 +162,7 @@ export function StudentDashboard({ user, onLogout }: { user: User; onLogout: () 
             ) : (
               <ul className="space-y-2">
                 {userLoans.map((l) => {
-                  const book = BOOKS.find((b) => b.isbn === l.isbn);
+                  const book = books.get(l.isbn);
                   return (
                     <li key={l.id} className="rounded-lg border border-ink-100 bg-surface-50 p-3">
                       <div className="flex items-start gap-3">
@@ -115,7 +175,7 @@ export function StudentDashboard({ user, onLogout }: { user: User; onLogout: () 
                               <div className="truncate text-xs font-semibold text-ink-900">{l.bookTitle}</div>
                               <div className="text-[10px] text-ink-500">ISBN: {l.isbn}</div>
                             </div>
-                            <LoanStatusBadge status={l.status} />
+                            <LoanStatusBadge status={l.statut as any} />
                           </div>
                           <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5 text-[10px] text-ink-500">
                             <span>Loaned: {l.loanDate}</span>
@@ -124,9 +184,9 @@ export function StudentDashboard({ user, onLogout }: { user: User; onLogout: () 
                           {l.returnDateActual && (
                             <div className="mt-0.5 text-[10px] text-emerald-600">Returned: {l.returnDateActual}</div>
                           )}
-                          {l.status === "Overdue" && (
+                          {l.statut === "EN_RETARD" && (
                             <div className="mt-0.5 text-[10px] font-semibold text-rose-600">
-                              Overdue by {Math.ceil((new Date("2026-03-17").getTime() - new Date(l.returnDateExpected).getTime()) / (1000 * 60 * 60 * 24))} day(s)
+                              Overdue by {Math.ceil((new Date("2026-03-17").getTime() - new Date(l.date_retour_prevue).getTime()) / (1000 * 60 * 60 * 24))} day(s)
                             </div>
                           )}
                         </div>
@@ -139,7 +199,7 @@ export function StudentDashboard({ user, onLogout }: { user: User; onLogout: () 
           </>
         )}
 
-        {tab === "reservations" && (
+        {!isLoading && !error && tab === "reservations" && (
           <>
             {userReservations.length === 0 ? (
               <div className="py-6 text-center">
@@ -152,7 +212,7 @@ export function StudentDashboard({ user, onLogout }: { user: User; onLogout: () 
             ) : (
               <ul className="space-y-2">
                 {userReservations.map((r) => {
-                  const book = BOOKS.find((b) => b.isbn === r.isbn);
+                  const book = books.get(r.isbn);
                   return (
                     <li key={r.id} className="rounded-lg border border-ink-100 bg-surface-50 p-3">
                       <div className="flex items-start gap-3">
@@ -165,18 +225,18 @@ export function StudentDashboard({ user, onLogout }: { user: User; onLogout: () 
                               <div className="truncate text-xs font-semibold text-ink-900">{r.bookTitle}</div>
                               <div className="text-[10px] text-ink-500">ISBN: {r.isbn}</div>
                             </div>
-                            <ReservationStatusBadge status={r.status} />
+                            <ReservationStatusBadge status={r.statut as any} />
                           </div>
                           <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5 text-[10px] text-ink-500">
-                            <span>Reserved: {r.date}</span>
-                            <span>Queue: #{r.queuePosition}</span>
+                            <span>Reserved: {r.date_reservation}</span>
+                            <span>Queue: #{r.position_file}</span>
                           </div>
-                          {r.status === "Ready" && (
+                          {r.statut === "PRETE" && (
                             <div className="mt-1 text-[10px] font-semibold text-emerald-600">
                               Ready for pickup at the library
                             </div>
                           )}
-                          {r.status === "Pending" && (
+                          {r.statut === "EN_ATTENTE" && (
                             <button
                               onClick={() => cancelReservation(r.id)}
                               className="mt-2 rounded border border-rose-200 px-3 py-1 text-[10px] font-semibold text-rose-600 hover:bg-rose-50"

@@ -1,14 +1,20 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { STAFF_ACCOUNTS, USERS } from "../../lib/books";
+import { auth } from "../../lib/api";
 import type { LoggedInRole } from "./types";
 
 export function StaffLoginForm({ onLogin }: { onLogin: (role: LoggedInRole, name: string) => void }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = () => {
+  const roleMap: Record<string, LoggedInRole> = {
+    'BIBLIOTHECAIRE': 'Librarian',
+    'ADMIN': 'Admin',
+  };
+
+  const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) {
       setError("Please fill in all fields.");
       return;
@@ -18,17 +24,22 @@ export function StaffLoginForm({ onLogin }: { onLogin: (role: LoggedInRole, name
       return;
     }
 
-    const account = STAFF_ACCOUNTS.find(
-      (a) => a.email === email.trim() && a.password === password
-    );
-    if (!account) {
-      setError("Invalid credentials. Please check your email and password.");
-      return;
-    }
-
-    const user = USERS.find((u) => u.id === account.userId);
+    setIsLoading(true);
     setError("");
-    onLogin(account.role, user?.name ?? account.email);
+
+    try {
+      const user = await auth.loginStaff(email.trim(), password);
+      
+      // Map French role to UI role
+      const uiRole: LoggedInRole = roleMap[user.role] || 'librarian';
+      const userName = user.name || `${user.prenom || ''} ${user.nom || ''}`.trim() || user.email;
+      
+      onLogin(uiRole, userName);
+    } catch (err) {
+      setError("Invalid credentials. Please check your email and password.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -75,9 +86,10 @@ export function StaffLoginForm({ onLogin }: { onLogin: (role: LoggedInRole, name
             <button
               type="button"
               onClick={handleSubmit}
-              className="mt-1 w-full rounded-lg bg-brand-700 px-4 py-3 text-sm font-semibold text-white shadow-soft hover:bg-brand-600"
+              disabled={isLoading}
+              className="mt-1 w-full rounded-lg bg-brand-700 px-4 py-3 text-sm font-semibold text-white shadow-soft hover:bg-brand-600 disabled:bg-ink-300"
             >
-              Sign In
+              {isLoading ? "Signing in..." : "Sign In"}
             </button>
 
             <div className="text-center text-xs text-ink-500">

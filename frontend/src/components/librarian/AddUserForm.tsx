@@ -1,33 +1,37 @@
 import { useState } from "react";
-import type { User, UserRole } from "../../lib/books";
+import { users as usersAPI, type User, type UserRole } from "../../lib/api";
 
 export function AddUserForm({ onAdd }: { onAdd: (user: User) => void }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<UserRole>("Student");
+  const [role, setRole] = useState<UserRole>("ETUDIANT");
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const reset = () => { setName(""); setEmail(""); setRole("Student"); setError(""); };
+  const reset = () => { setName(""); setEmail(""); setRole("ETUDIANT"); setError(""); };
 
-  const prefixForRole = (r: UserRole) => {
-    switch (r) {
-      case "Student": return "S";
-      case "Teacher": return "T";
-      case "Librarian": return "LIB";
-      case "Admin": return "ADM";
-    }
-  };
-
-  const handleAdd = () => {
+  const handleAdd = async () => {
     if (!name.trim() || !email.trim()) { setError("Name and Email are required."); return; }
     if (!email.includes("@")) { setError("Please enter a valid email."); return; }
     setError("");
-    const prefix = prefixForRole(role);
-    const id = `${prefix}-${String(Date.now()).slice(-6)}`;
-    onAdd({ id, name: name.trim(), email: email.trim(), role });
-    reset();
-    setOpen(false);
+    setIsLoading(true);
+    
+    try {
+      const user = await usersAPI.create({
+        name: name.trim(),
+        email: email.trim(),
+        role
+      });
+      onAdd(user);
+      reset();
+      setOpen(false);
+    } catch (err) {
+      setError("Failed to create user.");
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (!open) {
@@ -55,15 +59,15 @@ export function AddUserForm({ onAdd }: { onAdd: (user: User) => void }) {
           <label className="mb-1 block text-xs font-medium text-ink-500">Role</label>
           <select value={role} onChange={(e) => setRole(e.target.value as UserRole)}
             className="w-full rounded-lg border border-ink-100 bg-white px-3 py-2 text-sm text-ink-900 outline-none focus:border-brand-500">
-            <option value="Student">Student</option>
-            <option value="Teacher">Teacher</option>
-            <option value="Librarian">Librarian</option>
-            <option value="Admin">Admin</option>
+            <option value="ETUDIANT">Student</option>
+            <option value="ENSEIGNANT">Teacher</option>
+            <option value="BIBLIOTHECAIRE">Librarian</option>
+            <option value="ADMIN">Admin</option>
           </select>
         </div>
       </div>
       {error && <div className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{error}</div>}
-      <button onClick={handleAdd} className="mt-4 w-full rounded-lg bg-brand-700 px-4 py-3 text-sm font-semibold text-white shadow-soft hover:bg-brand-600">Create User</button>
+      <button onClick={handleAdd} disabled={isLoading} className="mt-4 w-full rounded-lg bg-brand-700 px-4 py-3 text-sm font-semibold text-white shadow-soft hover:bg-brand-600 disabled:opacity-50">{isLoading ? "Creating..." : "Create User"}</button>
     </div>
   );
 }

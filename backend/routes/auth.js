@@ -1,11 +1,20 @@
 const express = require('express');
 const router = express.Router();
-const { register, login } = require('../controllers/authController');
+const { register, studentLogin, staffLogin, userLogout, getCurrentUserData } = require('../controllers/authController');
 
-// --- 1. REGISTER (Test de création directe en base) ---
+// POST /api/auth/student/login
+router.post('/student/login', studentLogin);
+
+// POST /api/auth/staff/login
+router.post('/staff/login', staffLogin);
+
+// POST /api/auth/logout
+router.post('/logout', userLogout);
+
+// GET /api/auth/me (compatibility)
+router.get('/me', getCurrentUserData);
+
+// POST /api/auth/register
 router.post('/register', register);
-
-// --- 2. LOGIN (Simulé pour test) ---
-router.post('/login', login);
 
 module.exports = router;

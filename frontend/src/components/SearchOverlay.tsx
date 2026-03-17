@@ -1,19 +1,33 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { BOOKS } from "../lib/books";
+import { books as booksAPI, type Book } from "../lib/api";
 
 export function SearchOverlay({ onClose }: { onClose: () => void }) {
   const [query, setQuery] = useState("");
+  const [allBooks, setAllBooks] = useState<Book[]>([]);
   const nav = useNavigate();
+
+  // Fetch all books on mount
+  useEffect(() => {
+    const fetchBooks = async () => {
+      try {
+        const data = await booksAPI.getAll();
+        setAllBooks(data);
+      } catch (err) {
+        console.error("Failed to load books for search", err);
+      }
+    };
+    fetchBooks();
+  }, []);
 
   const q = query.trim().toLowerCase();
   const results =
     q.length > 0
-      ? BOOKS.filter(
+      ? allBooks.filter(
           (b) =>
-            b.title.toLowerCase().includes(q) ||
-            b.author.toLowerCase().includes(q) ||
-            b.isbn.toLowerCase().includes(q)
+            (b.title || b.titre || "").toLowerCase().includes(q) ||
+            (b.author || b.auteur || "").toLowerCase().includes(q) ||
+            (b.isbn || "").toLowerCase().includes(q)
         )
       : [];
 
@@ -47,13 +61,13 @@ export function SearchOverlay({ onClose }: { onClose: () => void }) {
                     ? <img src={b.coverUrl} alt="" className="h-10 w-7 rounded border border-ink-100 object-cover" />
                     : <div className="flex h-10 w-7 items-center justify-center rounded border border-ink-100 bg-surface-100 text-[8px] text-ink-500">N/A</div>}
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold text-ink-900">{b.title}</div>
-                    <div className="text-[11px] text-ink-500">{b.author}</div>
+                    <div className="truncate text-sm font-semibold text-ink-900">{b.title || b.titre}</div>
+                    <div className="text-[11px] text-ink-500">{b.author || b.auteur}</div>
                   </div>
-                  <span className={b.status === "Available"
+                  <span className={(b.status || "Available") === "Available"
                     ? "rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700"
                     : "rounded bg-rose-100 px-2 py-0.5 text-[10px] font-semibold text-rose-700"}>
-                    {b.status}
+                    {b.status || b.disponible === false ? "Borrowed" : "Available"}
                   </span>
                 </button>
               </li>

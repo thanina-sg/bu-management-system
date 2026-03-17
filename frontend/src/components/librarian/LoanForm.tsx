@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BOOKS, USERS } from "../../lib/books";
+import { users as usersAPI, books as booksAPI, type User, type Book } from "../../lib/api";
 import { FormResultBanner } from "./FormResultBanner";
 import type { FormResult } from "./types";
 
@@ -9,44 +9,61 @@ export function LoanForm() {
   const [loanDate, setLoanDate] = useState("2026-03-17");
   const [returnDate, setReturnDate] = useState("2026-03-31");
   const [result, setResult] = useState<FormResult>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleValidate = () => {
+  const handleValidate = async () => {
     setResult(null);
+    setIsLoading(true);
 
-    if (!studentId.trim() || !isbn.trim()) {
-      setResult({ type: "error", message: "Please fill in all required fields." });
-      return;
+    try {
+      if (!studentId.trim() || !isbn.trim()) {
+        setResult({ type: "error", message: "Please fill in all required fields." });
+        return;
+      }
+
+      // Fetch user and validate student exists
+      const users = await usersAPI.getAll();
+      const student: User | undefined = users.find((s: User) => s.id === studentId.trim());
+      if (!student) {
+        setResult({ type: "error", message: `Student not found: "${studentId}". Please verify the Student ID.` });
+        return;
+      }
+
+      // Fetch books and validate book exists and is available
+      const books = await booksAPI.getAll();
+      const book: Book | undefined = books.find((b: Book) => b.isbn === isbn.trim());
+      if (!book) {
+        setResult({ type: "error", message: `Book not found: ISBN "${isbn}" does not match any resource in the catalog.` });
+        return;
+      }
+
+      const bookStatus = book.status || (book.disponible === false ? "Borrowed" : "Available");
+      if (bookStatus === "Borrowed") {
+        const bookTitle = book.title || book.titre;
+        setResult({ type: "error", message: `"${bookTitle}" is currently borrowed and not available for loan.` });
+        return;
+      }
+
+      const studentName = `${student.prenom || ''} ${student.nom || ''}`.trim();
+      const bookTitle = book.title || book.titre;
+      
+      setResult({
+        type: "success",
+        title: "Loan Registered Successfully",
+        details: {
+          "Student": `${studentName} (${studentId})`,
+          "Book": bookTitle,
+          "ISBN": book.isbn,
+          "Loan Date": loanDate,
+          "Expected Return": returnDate,
+          "Status": "Active",
+        },
+      });
+    } catch (error) {
+      setResult({ type: "error", message: `Error validating loan: ${error instanceof Error ? error.message : "Unknown error"}` });
+    } finally {
+      setIsLoading(false);
     }
-
-    const student = USERS.find((s) => s.id === studentId.trim());
-    if (!student) {
-      setResult({ type: "error", message: `Student not found: "${studentId}". Please verify the Student ID.` });
-      return;
-    }
-
-    const book = BOOKS.find((b) => b.isbn === isbn.trim());
-    if (!book) {
-      setResult({ type: "error", message: `Book not found: ISBN "${isbn}" does not match any resource in the catalog.` });
-      return;
-    }
-
-    if (book.status === "Borrowed") {
-      setResult({ type: "error", message: `"${book.title}" is currently borrowed and not available for loan.` });
-      return;
-    }
-
-    setResult({
-      type: "success",
-      title: "Loan Registered Successfully",
-      details: {
-        "Student": `${student.name} (${student.id})`,
-        "Book": book.title,
-        "ISBN": book.isbn,
-        "Loan Date": loanDate,
-        "Expected Return": returnDate,
-        "Status": "Active",
-      },
-    });
   };
 
   return (
@@ -93,9 +110,9 @@ export function LoanForm() {
 
         <FormResultBanner result={result} />
 
-        <button type="button" onClick={handleValidate}
-          className="mt-8 w-full rounded-lg bg-brand-700 px-4 py-4 text-xl font-semibold text-white shadow-soft hover:bg-brand-600 md:text-4xl">
-          Validate Loan
+        <button type="button" onClick={handleValidate} disabled={isLoading}
+          className="mt-8 w-full rounded-lg bg-brand-700 px-4 py-4 text-xl font-semibold text-white shadow-soft hover:bg-brand-600 disabled:bg-ink-300 md:text-4xl">
+          {isLoading ? "Validating..." : "Validate Loan"}
         </button>
       </div>
     </div>

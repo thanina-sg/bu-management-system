@@ -39,18 +39,32 @@ const adminRoutes = require('./routes/admin');
 const usersRoutes = require('./routes/users');
 const reservationsRoutes = require('./routes/reservations');
 const empruntRoutes = require('./routes/emprunt');
+const statsRoutes = require('./routes/stats');
 
-// --- 5. Route Registration ---
-app.use('/auth', authRoutes);
-app.use('/ai', aiRoutes);
-app.use('/livres', livresRoutes);
-app.use('/admin', adminRoutes);
-app.use('/users', usersRoutes);
-app.use('/reservations', reservationsRoutes);
-app.use('/emprunts', empruntRoutes);
+// --- 5. Route Registration with /api prefix ---
+// Authentication endpoints
+app.use('/api/auth', authRoutes);
 
-// Compatibility alias (if your frontend still uses /api/books)
+// Books endpoints
 app.use('/api/books', livresRoutes);
+app.use('/api/livres', livresRoutes); // French alias
+
+// Loans endpoints
+app.use('/api/loans', empruntRoutes);
+app.use('/api/emprunts', empruntRoutes); // French alias
+
+// Reservations endpoints
+app.use('/api/reservations', reservationsRoutes);
+
+// Users endpoints
+app.use('/api/users', usersRoutes);
+
+// Stats endpoints
+app.use('/api/stats', statsRoutes);
+
+// Other routes
+app.use('/api/ai', aiRoutes);
+app.use('/api/admin', adminRoutes);
 
 // --- 6. Base Routes & Error Handling ---
 app.get('/', (req, res) => {

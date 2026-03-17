@@ -1,16 +1,42 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { BOOKS, CATEGORIES, STATUSES } from "../lib/books";
+import { books as booksAPI, type Book } from "../lib/api";
 import { applyFilters, type Filters } from "../lib/filter";
 
+const CATEGORIES = ["All Categories", "Fiction", "Non-Fiction", "Science", "History", "Biography", "Technology", "Business"];
+const STATUSES = ["All Status", "Available", "Borrowed"];
+
 export function HomePage() {
+  const [allBooks, setAllBooks] = useState<Book[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
   const [filters, setFilters] = useState<Filters>({
     q: "",
     category: "All Categories",
     status: "All Status",
   });
 
-  const filtered = useMemo(() => applyFilters(BOOKS, filters), [filters]);
+  // Fetch books on mount
+  useEffect(() => {
+    const fetchBooks = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const data = await booksAPI.getAll();
+        setAllBooks(data);
+      } catch (err) {
+        setError("Failed to load books. Please try again.");
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchBooks();
+  }, []);
+
+  const filtered = useMemo(() => applyFilters(allBooks, filters), [allBooks, filters]);
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-10">
@@ -71,54 +97,77 @@ export function HomePage() {
       </div>
 
       <section className="mt-6">
-        <div className="mb-4 text-xs text-ink-500">
-          Showing <span className="font-semibold text-ink-700">{filtered.length}</span> results
-        </div>
+        {isLoading && (
+          <div className="py-12 text-center">
+            <div className="text-[10px] text-ink-500">Loading books...</div>
+          </div>
+        )}
 
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {filtered.map((b) => (
-            <article key={b.id} className="rounded-lg border border-ink-100 bg-white p-3 shadow-soft">
-              <div className="relative">
-                <div
-                  className={
-                    b.status === "Available"
-                      ? "absolute right-1 top-1 rounded bg-emerald-100 px-2 py-1 text-[10px] font-semibold text-emerald-700"
-                      : "absolute right-1 top-1 rounded bg-rose-100 px-2 py-1 text-[10px] font-semibold text-rose-700"
-                  }
-                >
-                  {b.status}
-                </div>
+        {error && (
+          <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+            {error}
+          </div>
+        )}
 
-                {b.coverUrl ? (
-                  <img
-                    src={b.coverUrl}
-                    alt={b.title}
-                    className="h-72 w-full rounded border border-ink-100 object-cover"
-                  />
-                ) : (
-                  <div className="flex h-72 items-center justify-center rounded border border-ink-100 bg-surface-100 text-sm font-semibold text-ink-500">
-                    No Cover
+        {!isLoading && !error && (
+          <>
+            <div className="mb-4 text-xs text-ink-500">
+              Showing <span className="font-semibold text-ink-700">{filtered.length}</span> results
+            </div>
+
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {filtered.map((b) => (
+                <article key={b.id} className="rounded-lg border border-ink-100 bg-white p-3 shadow-soft">
+                  <div className="relative">
+                    <div
+                      className={
+                        b.status === "Available"
+                          ? "absolute right-1 top-1 rounded bg-emerald-100 px-2 py-1 text-[10px] font-semibold text-emerald-700"
+                          : "absolute right-1 top-1 rounded bg-rose-100 px-2 py-1 text-[10px] font-semibold text-rose-700"
+                      }
+                    >
+                      {b.status}
+                    </div>
+
+                    {b.coverUrl ? (
+                      <img
+                        src={b.coverUrl}
+                        alt={b.title}
+                        className="h-72 w-full rounded border border-ink-100 object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-72 items-center justify-center rounded border border-ink-100 bg-surface-100 text-sm font-semibold text-ink-500">
+                        No Cover
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
 
-              <div className="mt-4 text-[10px] font-semibold uppercase tracking-wide text-ink-500">
-                {b.category}
-              </div>
-              <h3 className="mt-1 line-clamp-2 font-serif text-2xl leading-tight text-ink-900">{b.title}</h3>
-              <p className="mt-1 text-sm text-ink-500">{b.author}</p>
+                  <div className="mt-4 text-[10px] font-semibold uppercase tracking-wide text-ink-500">
+                    {b.category}
+                  </div>
+                  <h3 className="mt-1 line-clamp-2 font-serif text-2xl leading-tight text-ink-900">{b.title}</h3>
+                  <p className="mt-1 text-sm text-ink-500">{b.author}</p>
 
-              <div className="mt-4">
-                <Link
-                  to={`/book/${b.id}`}
-                  className="inline-flex w-full items-center justify-center rounded bg-brand-700 px-4 py-2 text-xs font-semibold text-white hover:bg-brand-600"
-                >
-                  View Details
-                </Link>
+                  <div className="mt-4">
+                    <Link
+                      to={`/book/${b.id}`}
+                      className="inline-flex w-full items-center justify-center rounded bg-brand-700 px-4 py-2 text-xs font-semibold text-white hover:bg-brand-600"
+                    >
+                      View Details
+                    </Link>
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            {filtered.length === 0 && (
+              <div className="py-12 text-center">
+                <div className="text-2xl text-ink-200">&#x1F50D;</div>
+                <p className="mt-2 text-sm text-ink-500">No books found matching your search.</p>
               </div>
-            </article>
-          ))}
-        </div>
+            )}
+          </>
+        )}
       </section>
     </div>
   );
