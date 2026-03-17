@@ -1,167 +1,138 @@
 openapi: 3.0.0
 info:
   title: API Bibliothèque UHA
-  description: API de gestion avec authentification par Magic Link (Email uniquement).
+  description: API de gestion harmonisée avec la base de données PostgreSQL (Snake Case) et authentification JWT.
   version: 1.0.0
 
 servers:
   - url: http://localhost:5000
     description: Serveur de développement local
 
+security:
+  - bearerAuth: []
+
 paths:
+  # --- AUTHENTIFICATION ---
   /auth/register:
     post:
       summary: Inscription d'un nouvel utilisateur
       tags: [Authentification]
+      security: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [email, nom, prenom]
+              required: [email, nom, prenom, password]
               properties:
                 email: { type: string, example: "etudiant@uha.fr" }
                 nom: { type: string, example: "Dupont" }
                 prenom: { type: string, example: "Jean" }
+                password: { type: string, format: password, example: "MonSecret123!" }
                 role: { type: string, enum: [ETUDIANT, ENSEIGNANT, BIBLIOTHECAIRE] }
       responses:
         '201':
-          description: Utilisateur créé (statut ACTIF par défaut)
-        '400':
-          description: Erreur lors de l'inscription
+          description: Utilisateur créé avec succès.
 
   /auth/login:
     post:
-      summary: Connexion par Email (Magic Link)
+      summary: Connexion par Email et Mot de Passe
       tags: [Authentification]
+      security: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [email]
+              required: [email, password]
               properties:
                 email: { type: string, example: "etudiant@uha.fr" }
+                password: { type: string, format: password, example: "MonSecret123!" }
       responses:
         '200':
-          description: Email de connexion envoyé
-        '401':
-          description: Erreur d'envoi
+          description: Connexion réussie. Renvoie le token JWT.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: "Connexion réussie !" }
+                  token: { type: string }
+                  user:
+                    $ref: '#/components/schemas/Utilisateur'
 
+  # --- CATALOGUE DES LIVRES ---
   /api/books:
     get:
-      summary: Liste tous les livres du catalogue
-      tags:
-        - Catalogue
+      summary: Liste tous les livres du catalogue avec filtres
+      tags: [Catalogue]
+      security: []
       parameters:
         - in: query
           name: search
-          schema:
-            type: string
-          description: "Recherche par titre, auteur ou ISBN"
-
+          schema: { type: string }
         - in: query
           name: categorie
-          schema:
-            type: string
-          description: "Filtrer par catégorie (ex: Roman, Dystopie)"
-
-        - in: query
-          name: sort
-          schema:
-            type: string
-            enum:
-              - auteur
-              - disponibilite
-              - titre
-          description: "Trier les résultats"
-
+          schema: { type: string }
       responses:
         '200':
-          description: Liste des livres
+          description: Liste des livres récupérée. # AJOUTÉ ICI
           content:
             application/json:
               schema:
                 type: array
                 items:
                   $ref: '#/components/schemas/Livre'
-  /api/books/{isbn}/dispo:
-    get:
-      summary: Récupère le stock réel pour un ISBN précis
+    post:
+      summary: Ajouter un nouveau livre
       tags: [Catalogue]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Livre'
+      responses:
+        '201':
+          description: Livre ajouté avec succès.
+
+  /api/books/{isbn}:
+    get:
+      summary: Détails d'un livre par ISBN
+      tags: [Catalogue]
+      security: []
       parameters:
         - in: path
           name: isbn
           required: true
-          schema:
-            type: string
+          schema: { type: string }
       responses:
         '200':
-          description: Stock actuel
+          description: Détails du livre trouvés. # AJOUTÉ ICI
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  isbn: { type: string }
-                  nb_disponible: { type: integer }
-                  disponible: { type: boolean }
-  /emprunts:
+                $ref: '#/components/schemas/Livre'
+
+  # --- GESTION DES EMPRUNTS ---
+  /api/loans:
     get:
-      summary: Liste les emprunts
+      summary: Liste les emprunts de l'utilisateur connecté
       tags: [Emprunts]
-      parameters:
-        - in: query
-          name: utilisateurId
-          schema:
-            type: string
-            format: uuid
       responses:
         '200':
-          description: Emprunts enregistrés
+          description: Liste des emprunts récupérée. # AJOUTÉ ICI
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Emprunt'
-
-  /admin/rules:
-    get:
-      summary: Récupère les règles système
-      tags: [Administrateur]
-      responses:
-        '200':
-          description: Liste des règles
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/SystemRule'
-
-  /admin/rules/{ruleId}:
-    put:
-      summary: Met à jour l’état d’une règle
-      tags: [Administrateur]
-      parameters:
-        - name: ruleId
-          in: path
-          required: true
-          schema:
-            type: string
+                type: array
+                items:
+                  $ref: '#/components/schemas/Emprunt'
+    post:
+      summary: Enregistrer un nouvel emprunt
+      tags: [Emprunts]
       requestBody:
         required: true
         content:
@@ -170,105 +141,74 @@ paths:
               type: object
               required: [id_utilisateur, isbn]
               properties:
-                id_utilisateur: 
-                  type: string
-                  format: uuid
-                  example: "550e8400-e29b-41d4-a716-446655440000"
-                isbn: 
-                  type: string
-                  example: "9782070415793"
+                id_utilisateur: { type: string, format: uuid }
+                isbn: { type: string }
       responses:
         '201':
-          description: Emprunt créé avec succès
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  data:
-                    $ref: '#/components/schemas/SystemRule'
-        '400':
-          description: Mauvaise requête
-        '404':
-          description: Règle non trouvée
+          description: Emprunt créé.
+        '202':
+          description: Placé en file d'attente (réservation).
 
-  /admin/users:
-    get:
-      summary: Récupère les comptes administrables
-      tags: [Administrateur]
+  /api/loans/{id}/return:
+    put:
+      summary: Enregistrer le retour d'un livre
+      tags: [Emprunts]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
       responses:
         '200':
-          description: Liste des utilisateurs
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/AdminUser'
+          description: Retour enregistré avec succès. # AJOUTÉ ICI
 
-  /admin/metrics:
+  # --- UTILISATEURS ---
+  /api/users/me:
     get:
-      summary: Statistiques globales du back-office
-      tags: [Administrateur]
-      responses:
-        '200':
-          description: Nombre d’objets clés
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  data:
-                    $ref: '#/components/schemas/AdminMetrics'
-
-  /users:
-    get:
-      summary: Liste des utilisateurs
+      summary: Profil de l'utilisateur connecté
       tags: [Utilisateurs]
       responses:
         '200':
-          description: Comptes utilisateurs
+          description: Profil utilisateur récupéré. # AJOUTÉ ICI
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Utilisateur'
+                $ref: '#/components/schemas/Utilisateur'
 
-  /reservations:
+  /api/users:
     get:
-      summary: Liste des réservations
-      tags: [Réservations]
+      summary: Liste tous les utilisateurs (Admin)
+      tags: [Utilisateurs]
       responses:
         '200':
-          description: Réservations réalisées
+          description: Liste des utilisateurs récupérée. # AJOUTÉ ICI
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                  data:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Reservation'
+                type: array
+                items:
+                  $ref: '#/components/schemas/Utilisateur'
+
+  # --- ADMINISTRATION ---
+  /admin/metrics:
+    get:
+      summary: Statistiques globales du système
+      tags: [Administrateur]
+      responses:
+        '200':
+          description: Statistiques récupérées. # AJOUTÉ ICI
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminMetrics'
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   schemas:
     Utilisateur:
       type: object
@@ -277,85 +217,30 @@ components:
         nom: { type: string }
         prenom: { type: string }
         email: { type: string }
-        role: { type: string }
+        role: { type: string, enum: [ETUDIANT, ENSEIGNANT, BIBLIOTHECAIRE, ADMINISTRATEUR] }
         statut: { type: string, example: "ACTIF" }
+        created_at: { type: string, format: date-time }
 
     Livre:
       type: object
-      required: [isbn, titre, auteur, categorie, annee]
+      required: [isbn, titre, auteur]
       properties:
         isbn: { type: string }
         titre: { type: string }
         auteur: { type: string }
         categorie: { type: string }
+        resume: { type: string }
         annee: { type: integer }
-        est_disponible: { type: boolean }
-        exemplaire:
-          type: object
-          properties:
-            id_exemplaire: { type: string, format: uuid }
-            disponibilite: { type: boolean }
-            etat: { type: string }
-            localisation: { type: string }
 
     Emprunt:
       type: object
       properties:
-        id: { type: integer }
-        dateEmprunt: { type: string, format: date }
-        dateRetourPrevue: { type: string, format: date }
-        estRendu: { type: boolean }
-        utilisateurId: { type: string, format: uuid }
-        exemplaireId: { type: integer }
-        dateRetourReelle: { type: string, format: date, nullable: true }
-        utilisateur:
-          $ref: '#/components/schemas/Utilisateur'
-        exemplaire:
-          $ref: '#/components/schemas/Exemplaire'
-
-    SystemRule:
-      type: object
-      properties:
-        id: { type: string }
-        title: { type: string }
-        description: { type: string }
-        active: { type: boolean }
-
-    AdminUser:
-      type: object
-      properties:
-        id: { type: string }
-        fullName: { type: string }
-        email: { type: string }
-        role: { type: string }
-        status: { type: string }
-        privileges:
-          type: array
-          items:
-            type: string
-
-    Reservation:
-      type: object
-      properties:
-        id: { type: string }
-        id_utilisateur: { type: string }
-        isbn: { type: string }
-        date_reservation: { type: string }
-        statut: { type: string }
-        position_file: { type: integer }
-        utilisateur:
-          $ref: '#/components/schemas/Utilisateur'
-        livre:
-          $ref: '#/components/schemas/Livre'
-
-    Exemplaire:
-      type: object
-      properties:
-        id_exemplaire: { type: string }
-        isbn: { type: string }
-        etat: { type: string }
-        localisation: { type: string }
-        disponibilite: { type: boolean }
+        id: { type: string, format: uuid }
+        id_utilisateur: { type: string, format: uuid }
+        id_exemplaire: { type: string, format: uuid }
+        date_emprunt: { type: string, format: date }
+        date_retour_prevue: { type: string, format: date }
+        date_retour_reelle: { type: string, format: date, nullable: true }
 
     AdminMetrics:
       type: object
@@ -363,5 +248,3 @@ components:
         totalBooks: { type: integer }
         activeEmprunts: { type: integer }
         totalUsers: { type: integer }
-        administrators: { type: integer }
-        librarians: { type: integer }

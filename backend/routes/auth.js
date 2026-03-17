@@ -1,11 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const { register, login } = require('../controllers/authController');
+const authController = require('../controllers/authController');
 
-// --- 1. REGISTER (Test de création directe en base) ---
-router.post('/register', register);
-
-// --- 2. LOGIN (Simulé pour test) ---
-router.post('/login', login);
+// Ces routes doivent rester PUBLIQUES
+router.post('/register', authController.register);
+router.post('/login', authController.login);
 
 module.exports = router;

@@ -1,14 +1,14 @@
 const { registerUser, loginUser } = require('../models/authModel');
 
 const register = async (req, res) => {
-    const { email, nom, prenom, role } = req.body;
+    const { email, nom, prenom, role, password } = req.body;
 
     try {
-        const user = await registerUser(email, nom, prenom, role);
+        const user = await registerUser(email, nom, prenom, role, password);
 
         res.status(201).json({ 
-            message: "Succès : Utilisateur créé directement dans la base de données !",
-            user: user
+            message: "Succès : Utilisateur créé avec un mot de passe sécurisé !",
+            user: { id: user.id, email: user.email, role: user.role } 
         });
 
     } catch (err) {
@@ -18,14 +18,27 @@ const register = async (req, res) => {
 };
 
 const login = async (req, res) => {
-    const { email } = req.body;
+    const { email, password } = req.body;
 
     try {
-        const user = await loginUser(email);
-        res.json({ message: "Connexion réussie (Simulation sans email)", user: user });
+        // IMPORTANT : loginUser renvoie { user, token }
+        // On utilise la déstructuration pour récupérer les deux
+        const { user, token } = await loginUser(email, password);
+        
+        // On renvoie TOUT au client
+        res.json({ 
+            message: "Connexion réussie !", 
+            token: token, // Voilà ce qui manquait !
+            user: { 
+                id: user.id, 
+                email: user.email, 
+                role: user.role 
+            } 
+        });
 
     } catch (err) {
-        res.status(401).json({ error: err.message });
+        console.error("Erreur Login:", err.message);
+        res.status(401).json({ error: "Identifiants invalides" });
     }
 };
 

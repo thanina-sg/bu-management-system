@@ -1,51 +1,6 @@
 const supabase = require('../db');
 
-const DEFAULT_RULES = [
-  {
-    id: 'rule-1',
-    title: 'Validation automatique des emprunts',
-    description: 'Limiter les emprunts après 22h tant que les quotas ne sont pas mis à jour.',
-    active: true,
-  },
-  {
-    id: 'rule-2',
-    title: 'Règles de catalogage',
-    description: 'Les notices doivent suivre le référentiel BIB-2026 pour être validées.',
-    active: true,
-  },
-  {
-    id: 'rule-3',
-    title: 'Alertes de retard',
-    description: 'Activer l’envoi automatique 3 jours avant la date de retour prévue.',
-    active: false,
-  },
-];
-
-const ROLE_PRIVILEGES = {
-  ADMINISTRATEUR: ['Gérer les comptes', 'Configurer les règles', 'Superviser les emprunts'],
-  BIBLIOTHECAIRE: ['Gérer les emprunts', 'Notifier les usagers', 'Préparer les réservations'],
-  ENSEIGNANT: ['Accès lecture', 'Réserver des salles', 'Gérer les emprunts personnels'],
-  ETUDIANT: ['Consulter le catalogue', 'Réserver des livres'],
-};
-
-const formatPrivileges = (role) => {
-  if (!role) return ROLE_PRIVILEGES.ETUDIANT;
-  const normalized = role.toUpperCase();
-  return ROLE_PRIVILEGES[normalized] ?? ['Accès restreint'];
-};
-
-const formatRoleLabel = (role) => {
-  if (!role) return 'Utilisateur';
-  const mapping = {
-    ADMINISTRATEUR: 'Administrateur',
-    BIBLIOTHECAIRE: 'Bibliothécaire',
-    ENSEIGNANT: 'Enseignant',
-    ETUDIANT: 'Étudiant',
-  };
-  return mapping[role.toUpperCase()] ?? role;
-};
-
-const rulesState = DEFAULT_RULES.map((rule) => ({ ...rule }));
+// ... (Garder DEFAULT_RULES, ROLE_PRIVILEGES, formatPrivileges, formatRoleLabel et rulesState tels quels) ...
 
 const getSystemRules = async () => {
   return rulesState;
@@ -53,40 +8,50 @@ const getSystemRules = async () => {
 
 const toggleRule = async (ruleId, active) => {
   const index = rulesState.findIndex((rule) => rule.id === ruleId);
-  if (index === -1) {
-    throw new Error('Règle introuvable');
-  }
+  if (index === -1) throw new Error('Règle introuvable');
   rulesState[index].active = active;
   return rulesState[index];
 };
 
 const getAdminUsers = async () => {
+  // On récupère l'utilisateur ET ses emprunts non rendus pour le statut
   const { data, error } = await supabase
     .from('utilisateur')
-    .select('id, nom, prenom, email, role, statut');
+    .select(`
+      id:id, 
+      nom, 
+      prenom, 
+      email, 
+      role, 
+      emprunt(id_emprunt)
+    `)
+    .is('emprunt.date_retour_reelle', null); 
+
   if (error) throw new Error(error.message);
   if (!data) return [];
 
-  return data.map((user) => ({
-    id: user.id,
-    fullName: `${user.nom} ${user.prenom}`,
-    email: user.email,
-    role: formatRoleLabel(user.role),
-    status: user.statut,
-    privileges: formatPrivileges(user.role),
-  }));
+  return data.map((user) => {
+    // Calcul du statut dynamique
+    const aEmprunte = user.emprunt && user.emprunt.length > 0;
+
+    return {
+      id: user.id,
+      fullName: `${user.nom} ${user.prenom}`, // Format AdminUser Swagger
+      email: user.email,
+      role: formatRoleLabel(user.role),
+      status: aEmprunte ? "EMPRUNTEUR" : "ACTIF", // Ta règle métier
+      privileges: formatPrivileges(user.role),
+    };
+  });
 };
 
 const countRows = async (table, applyFilter) => {
-  let query = supabase.from(table).select('id', { count: 'exact', head: true });
-  if (applyFilter) {
-    query = applyFilter(query);
-  }
+  // On utilise count: 'exact' pour les metrics
+  let query = supabase.from(table).select('*', { count: 'exact', head: true });
+  if (applyFilter) query = applyFilter(query);
 
   const { count, error } = await query;
-  if (error) {
-    throw new Error(error.message);
-  }
+  if (error) throw new Error(error.message);
   return count ?? 0;
 };
 

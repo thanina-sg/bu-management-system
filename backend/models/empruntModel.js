@@ -5,97 +5,139 @@ const supabase = require('../db');
  */
 const creerEmprunt = async (id_utilisateur, isbn) => {
   // 1. Tenter de trouver UN exemplaire disponible
-  const { data: exemplaire, error: exError } = await supabase
+  const { data: exemplaire } = await supabase
     .from('exemplaire')
     .select('id_exemplaire')
     .eq('isbn', isbn)
     .eq('disponibilite', true)
     .limit(1)
-    .maybeSingle(); // Retourne null sans erreur si aucun exemplaire n'est trouvé
+    .maybeSingle();
 
   // --- CAS A : UN EXEMPLAIRE EST DISPONIBLE -> ON FAIT L'EMPRUNT ---
   if (exemplaire) {
     const id_exemplaire = exemplaire.id_exemplaire;
+    const datePrevue = new Date();
+    datePrevue.setDate(datePrevue.getDate() + 14);
 
-    // Calcul de la date de retour (J + 14 jours)
-    const dateRetourPrevue = new Date();
-    dateRetourPrevue.setDate(dateRetourPrevue.getDate() + 14);
-
-    // Créer l'emprunt
     const { data: emprunt, error: emError } = await supabase
       .from('emprunt')
       .insert([{
         id_utilisateur: id_utilisateur,
         id_exemplaire: id_exemplaire,
-        date_retour_prevue: dateRetourPrevue.toISOString().split('T')[0]
+        date_retour_prevue: datePrevue.toISOString().split('T')[0]
       }])
-      .select()
+      .select(`
+        id,
+        date_emprunt,
+        date_retour_prevue,
+        id_utilisateur,
+        id_exemplaire
+      `)
       .single();
 
     if (emError) throw emError;
 
-    // Mettre à jour la disponibilité de l'exemplaire à 'false'
-    const { error: upError } = await supabase
+    // Mettre à jour la disponibilité de l'exemplaire
+    await supabase
       .from('exemplaire')
       .update({ disponibilite: false })
       .eq('id_exemplaire', id_exemplaire);
 
-    if (upError) throw upError;
-
-    return { type: 'EMPRUNT', data: emprunt };
+    return { 
+      type: 'EMPRUNT', 
+      data: { 
+        ...emprunt, 
+        date_retour_reelle: null 
+      } 
+    };
   } 
 
   // --- CAS B : AUCUN EXEMPLAIRE DISPONIBLE -> ON CRÉE UNE RÉSERVATION ---
   else {
-    // Calculer la position dans la file (nombre de résas EN_ATTENTE pour cet ISBN + 1)
-    const { count, error: countError } = await supabase
+    // On compte combien de personnes attendent DEJA ce livre précis
+    const { count } = await supabase
       .from('reservation')
       .select('*', { count: 'exact', head: true })
       .eq('isbn', isbn)
       .eq('statut', 'EN_ATTENTE');
 
-    if (countError) throw countError;
-
-    const nouvellePosition = (count || 0) + 1;
-
-    // Créer la réservation
     const { data: reservation, error: resError } = await supabase
       .from('reservation')
       .insert([{
         id_utilisateur,
         isbn,
-        position_file: nouvellePosition,
+        position_file: (count || 0) + 1,
         statut: 'EN_ATTENTE'
       }])
       .select()
       .single();
 
     if (resError) throw resError;
-
     return { type: 'RESERVATION', data: reservation };
   }
 };
 
 /**
- * Récupérer les emprunts en cours d'un utilisateur
+ * Récupérer les emprunts d'un utilisateur
  */
 const getEmpruntsByUserId = async (id_utilisateur) => {
   const { data, error } = await supabase
     .from('emprunt')
     .select(`
-      *,
+      id,
+      date_emprunt,
+      date_retour_prevue,
+      date_retour_reelle,
+      id_utilisateur,
+      id_exemplaire,
       exemplaire (
+        id_exemplaire,
+        isbn,
         livre (titre, auteur)
       )
     `)
-    .eq('id_utilisateur', id_utilisateur)
-    .is('date_retour_reelle', null);
+    .eq('id_utilisateur', id_utilisateur);
 
   if (error) throw error;
   return data;
 };
 
+/**
+ * Enregistre le retour d'un livre (Action PUT /return)
+ */
+const enregistrerRetour = async (idEmprunt, date_retour_reelle) => {
+  // 1. On récupère l'id_exemplaire lié à cet emprunt (clé primaire 'id')
+  const { data: loan } = await supabase
+    .from('emprunt')
+    .select('id_exemplaire')
+    .eq('id', idEmprunt)
+    .single();
+
+  if (!loan) throw new Error("Emprunt introuvable");
+
+  // 2. Update de l'emprunt
+  const { data, error } = await supabase
+    .from('emprunt')
+    .update({ 
+      date_retour_reelle: date_retour_reelle || new Date().toISOString().split('T')[0] 
+    })
+    .eq('id', idEmprunt)
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  // 3. Remettre l'exemplaire en disponible
+  await supabase
+    .from('exemplaire')
+    .update({ disponibilite: true })
+    .eq('id_exemplaire', loan.id_exemplaire);
+
+  return data;
+};
+
 module.exports = {
   creerEmprunt,
-  getEmpruntsByUserId
+  getEmpruntsByUserId,
+  enregistrerRetour
 };

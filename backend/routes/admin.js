@@ -1,15 +1,17 @@
 const express = require('express');
 const router = express.Router();
+const { verifyToken, isAdmin } = require('../middlewares/auth'); 
 const {
   fetchRules,
   updateRuleActivation,
   fetchUsers,
-  fetchMetrics,
+  fetchMetrics
 } = require('../controllers/adminController');
 
-router.get('/rules', fetchRules);
-router.put('/rules/:ruleId', updateRuleActivation);
-router.get('/users', fetchUsers);
-router.get('/metrics', fetchMetrics);
+// Vérifie que "isAdmin" n'est pas undefined ici
+router.get('/rules', verifyToken, isAdmin, fetchRules);
+router.put('/rules/:ruleId', verifyToken, isAdmin, updateRuleActivation);
+router.get('/users', verifyToken, isAdmin, fetchUsers);
+router.get('/metrics', verifyToken, isAdmin, fetchMetrics);
 
 module.exports = router;
