@@ -51,3 +51,30 @@ The system will be accessible at:
 Frontend: http://localhost:5173
 Backend:  http://localhost:5000
 ```
+
+---
+
+## Troubleshooting
+
+### Issue: npm install or npm run fails
+
+If you encounter errors during `npm install` or `npm run dev`, try removing dependency files and reinstalling:
+
+```bash
+# Remove lock files and node_modules
+rm -rf node_modules package-lock.json pnpm-lock.yaml
+
+# Remove from backend
+rm -rf backend/node_modules backend/package-lock.yaml backend/pnpm-lock.yaml
+
+# Remove from frontend
+rm -rf frontend/node_modules frontend/package-lock.yaml frontend/pnpm-lock.yaml
+
+# Reinstall dependencies
+npm install
+
+# Then try running again
+npm run dev
+```
+
+This clears all cached dependencies and performs a fresh install, which resolves most installation issues.

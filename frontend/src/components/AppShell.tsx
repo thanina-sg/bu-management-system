@@ -4,24 +4,19 @@ import { TopNavLink } from "./TopNavLink";
 import { SearchOverlay } from "./SearchOverlay";
 import { AccountPanel } from "./AccountPanel";
 import { ChatWidget } from "./ChatWidget";
-import { auth, type User } from "../lib/api";
 
 export function AppShell() {
   const [showSearch, setShowSearch] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    // Check user on mount
-    setUser(auth.getStoredUser());
-
-    // Listen for login/logout events
+    // Cleanup listeners on unmount
     const handleUserLoggedIn = () => {
-      setUser(auth.getStoredUser());
+      // Event registered but no action needed
     };
 
     const handleUserLoggedOut = () => {
-      setUser(null);
+      // Event registered but no action needed
     };
 
     window.addEventListener('userLoggedIn', handleUserLoggedIn);
@@ -32,9 +27,6 @@ export function AppShell() {
       window.removeEventListener('userLoggedOut', handleUserLoggedOut);
     };
   }, []);
-
-  // Show librarian portal only for staff (not for students/teachers)
-  //const isStaff = user && (user.role === "BIBLIOTHECAIRE" || user.role === "ADMINISTRATEUR");
 
   return (
     <div className="min-h-screen bg-[#f3f5f9]">
