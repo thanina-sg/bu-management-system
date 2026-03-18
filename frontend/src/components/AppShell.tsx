@@ -34,7 +34,7 @@ export function AppShell() {
   }, []);
 
   // Show librarian portal only for staff (not for students/teachers)
-  const isStaff = user && (user.role === "BIBLIOTHECAIRE" || user.role === "ADMINISTRATEUR");
+  //const isStaff = user && (user.role === "BIBLIOTHECAIRE" || user.role === "ADMINISTRATEUR");
 
   return (
     <div className="min-h-screen bg-[#f3f5f9]">
