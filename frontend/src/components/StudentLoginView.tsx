@@ -18,6 +18,8 @@ export function StudentLoginView({ onLogin }: { onLogin: (user: User) => void })
 
     try {
       const user = await auth.loginStudent(email, password);
+      // Notify other components (e.g., AppShell) about login
+      window.dispatchEvent(new Event('userLoggedIn'));
       onLogin(user);
     } catch (err) {
       if (err instanceof APIError) {
@@ -76,12 +78,10 @@ export function StudentLoginView({ onLogin }: { onLogin: (user: User) => void })
       </div>
 
       <div className="mt-4 border-t border-ink-100 pt-3">
-        <div className="text-[9px] font-semibold uppercase tracking-wide text-ink-500">Comptes de demonstration (mot de passe: stu123)</div>
+        <div className="text-[9px] font-semibold uppercase tracking-wide text-ink-500">Comptes de demonstration</div>
         <div className="mt-1.5 space-y-1 text-[10px] text-ink-500">
-          <div>alice.dupont@uha.fr</div>
-          <div>marc.leroy@uha.fr</div>
-          <div>fatima.bensaid@uha.fr</div>
-          <div>jean.muller@uha.fr</div>
+          <div>student1@uha.fr / student1</div>
+          <div>prof1@uha.fr / prof1</div>
         </div>
       </div>
     </div>

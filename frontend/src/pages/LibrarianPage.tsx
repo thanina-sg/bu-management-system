@@ -43,6 +43,8 @@ export function LibrarianPage() {
     setView("login");
     setLoggedInRole("Librarian");
     setLoggedInName("");
+    // Notify other components (e.g., AppShell) about logout
+    window.dispatchEvent(new Event('userLoggedOut'));
     navigate("/");
   };
 

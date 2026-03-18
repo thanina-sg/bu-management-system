@@ -18,6 +18,8 @@ export function AccountPanel({ onClose }: { onClose: () => void }) {
   const handleLogout = async () => {
     await auth.logout();
     setLoggedInUser(null);
+    // Notify other components (e.g., AppShell) about logout
+    window.dispatchEvent(new Event('userLoggedOut'));
   };
 
   return (

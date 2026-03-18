@@ -30,6 +30,9 @@ export function StaffLoginForm({ onLogin }: { onLogin: (role: LoggedInRole, name
     try {
       const user = await auth.loginStaff(email.trim(), password);
       
+      // Notify other components (e.g., AppShell) about login
+      window.dispatchEvent(new Event('userLoggedIn'));
+      
       // Map French role to UI role
       const uiRole: LoggedInRole = roleMap[user.role] || 'Librarian';
       const userName = `${user.prenom || ''} ${user.nom || ''}`.trim() || user.email;
@@ -104,11 +107,11 @@ export function StaffLoginForm({ onLogin }: { onLogin: (role: LoggedInRole, name
             <div className="mt-2 space-y-1.5 text-[11px] text-ink-500">
               <div className="flex items-center gap-2">
                 <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[9px] font-semibold text-blue-700">Bibliothecaire</span>
-                sophie.martin@uha.fr / lib123
+                librarian1@uha.fr / librarian1
               </div>
               <div className="flex items-center gap-2">
                 <span className="rounded bg-violet-100 px-1.5 py-0.5 text-[9px] font-semibold text-violet-700">Administrateur</span>
-                admin@uha.fr / admin123
+                admin1@uha.fr / admin1
               </div>
             </div>
           </div>

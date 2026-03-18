@@ -12,7 +12,25 @@ export function AppShell() {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
+    // Check user on mount
     setUser(auth.getStoredUser());
+
+    // Listen for login/logout events
+    const handleUserLoggedIn = () => {
+      setUser(auth.getStoredUser());
+    };
+
+    const handleUserLoggedOut = () => {
+      setUser(null);
+    };
+
+    window.addEventListener('userLoggedIn', handleUserLoggedIn);
+    window.addEventListener('userLoggedOut', handleUserLoggedOut);
+
+    return () => {
+      window.removeEventListener('userLoggedIn', handleUserLoggedIn);
+      window.removeEventListener('userLoggedOut', handleUserLoggedOut);
+    };
   }, []);
 
   // Show librarian portal only for staff (not for students/teachers)
@@ -31,7 +49,7 @@ export function AppShell() {
 
           <nav className="hidden items-center gap-6 sm:flex">
             <TopNavLink to="/">Catalogue</TopNavLink>
-            {isStaff && <TopNavLink to="/librarian">Portail personnel</TopNavLink>}
+            <TopNavLink to="/librarian">Portail personnel</TopNavLink>
           </nav>
 
           <div className="flex items-center gap-3 text-ink-500">
