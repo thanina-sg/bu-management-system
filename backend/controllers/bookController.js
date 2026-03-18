@@ -1,4 +1,5 @@
 const { getBooks, getBookById, getRecommendations, addBook, updateBook, deleteBook } = require('../models/bookModel');
+const supabase = require('../db');
 
 const getAllBooks = async (req, res) => {
     try {
@@ -23,6 +24,27 @@ const getBook = async (req, res) => {
 
     } catch (err) {
         res.status(404).json({ error: err.message });
+    }
+};
+
+const getBookCopies = async (req, res) => {
+    try {
+        const isbn = req.params.id;
+        console.log(`[getBookCopies] Looking for copies with ISBN: ${isbn}`);
+        
+        const { data, error } = await supabase
+            .from('exemplaire')
+            .select('id_exemplaire, isbn, etat, localisation, disponibilite')
+            .eq('isbn', isbn);
+
+        if (error) throw error;
+        
+        console.log(`[getBookCopies] Found ${data?.length || 0} copies for ${isbn}`);
+        res.json(data || []);
+
+    } catch (err) {
+        console.error(`[getBookCopies] Error:`, err.message);
+        res.status(400).json({ error: err.message });
     }
 };
 
@@ -69,6 +91,7 @@ const removeBook = async (req, res) => {
 module.exports = {
     getAllBooks,
     getBook,
+    getBookCopies,
     getBookRecommendations,
     createBook,
     modifyBook,

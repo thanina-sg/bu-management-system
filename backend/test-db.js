@@ -6,13 +6,19 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
 async function testConnection() {
     console.log("Connecting to:", process.env.SUPABASE_URL);
     
-    // Try to fetch users (even if empty, it shouldn't error)
-    const { data, error } = await supabase.from('utilisateur').select('*').limit(1);
+    // Check exemplaires count
+    const { data, error } = await supabase.from('exemplaire').select('*', { count: 'exact' });
 
     if (error) {
-        console.error("Connection failed:", error.message);
+        console.error("Error:", error.message);
     } else {
-        console.log("Connection successful! Database is responding.");
+        console.log(`✓ Found ${data?.length || 0} exemplaires in database`);
+        
+        // Show a sample
+        if (data && data.length > 0) {
+            console.log("\nSample exemplaires:");
+            console.log(data.slice(0, 3));
+        }
     }
 }
 

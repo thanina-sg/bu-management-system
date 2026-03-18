@@ -110,43 +110,170 @@ async function answerAvailabilityForBook(question) {
 }
 
 /**
- * Answer: Books in a specific category
+ * Intelligent search: extract keywords and search database comprehensively
  */
-async function answerBooksInCategory(question) {
-  const categories = [
-    'Fiction', 'Science-Fiction', 'Fantasy', 'Romance', 'Thriller',
-    'Historique', 'Biographie', 'Education', 'Technique', 'Science',
-    'Philosophie', 'Histoire', 'Art'
-  ];
+async function intelligentSearch(question) {
+  const normalized = normalize(question);
+  
+  // Extract potential book titles/authors by looking for quoted text or proper nouns
+  const quotedMatch = question.match(/"([^"]+)"/);
+  const quotedTitle = quotedMatch ? quotedMatch[1] : null;
+  
+  // Get all books in DB for comprehensive search
+  const { data: allBooks, error: booksError } = await supabase
+    .from('livre')
+    .select('isbn, titre, auteur, categorie')
+    .order('titre', { ascending: true });
 
-  const q = normalize(question);
-  const category = categories.find(cat => q.includes(normalize(cat)));
+  if (booksError) throw booksError;
 
-  if (!category) {
+  // Try to find matching books
+  let matchedBooks = [];
+  
+  if (quotedTitle) {
+    // Exact match from quoted text
+    matchedBooks = allBooks.filter(b => 
+      normalize(b.titre).includes(normalize(quotedTitle)) ||
+      normalize(b.auteur).includes(normalize(quotedTitle))
+    );
+  } else {
+    // Fuzzy match from question keywords
+    const questionWords = question
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(w => w.length > 3)
+      .map(normalize);
+    
+    matchedBooks = allBooks.filter(b => {
+      const titleWords = normalize(b.titre).split(/\s+/);
+      const authorWords = normalize(b.auteur).split(/\s+/);
+      const allWords = [...titleWords, ...authorWords];
+      
+      return questionWords.some(qw => allWords.some(w => w.includes(qw) || qw.includes(w)));
+    });
+  }
+
+  if (matchedBooks.length === 0) {
+    return null;
+  }
+
+  // Get exemplaires for matched books
+  const { data: exemplaires, error: exError } = await supabase
+    .from('exemplaire')
+    .select('id_exemplaire, isbn, disponibilite');
+
+  if (exError) throw exError;
+
+  // Get all loans
+  const { data: loansRaw, error: loansError } = await supabase
+    .from('emprunt')
+    .select('id, id_exemplaire, date_retour_reelle, date_retour_prevue')
+    .order('id');
+
+  if (loansError) throw loansError;
+
+  // Add status to loans based on dates
+  const loansWithStatus = loansRaw.map(loan => {
+    let statut = 'ACTIF';
+    if (loan.date_retour_reelle) {
+      statut = 'RETOURNE';
+    } else if (loan.date_retour_prevue && new Date(loan.date_retour_prevue) < new Date()) {
+      statut = 'EN_RETARD';
+    }
+    return { ...loan, statut };
+  });
+
+  // Process data for matched books
+  const bookDetails = matchedBooks.map(book => {
+    const bookExemplaires = exemplaires.filter(ex => ex.isbn === book.isbn);
+    const bookLoanIds = bookExemplaires.map(ex => ex.id_exemplaire);
+    const bookLoans = loansWithStatus.filter(l => bookLoanIds.includes(l.id_exemplaire));
+    
+    const totalCopies = bookExemplaires.length;
+    const availableCopies = bookExemplaires.filter(ex => ex.disponibilite).length;
+    const totalLoans = bookLoans.length;
+    const activeLoans = bookLoans.filter(l => l.statut === 'ACTIF').length;
+    const returnedLoans = bookLoans.filter(l => l.statut === 'RETOURNE').length;
+
+    return {
+      isbn: book.isbn,
+      titre: book.titre,
+      auteur: book.auteur,
+      categorie: book.categorie,
+      exemplaires: {
+        total: totalCopies,
+        disponibles: availableCopies,
+        empruntes: totalCopies - availableCopies
+      },
+      emprunts: {
+        total: totalLoans,
+        actifs: activeLoans,
+        retournes: returnedLoans
+      }
+    };
+  });
+
+  // Build response
+  const lines = [`📚 Information sur ${bookDetails.length} livre(s) trouvé(s):`, ''];
+
+  bookDetails.forEach(book => {
+    lines.push(`**"${book.titre}"** par ${book.auteur}`);
+    lines.push(`ISBN: ${book.isbn} | Catégorie: ${book.categorie}`);
+    lines.push('');
+    
+    // Exemplaires info
+    lines.push(`  📖 Exemplaires:`);
+    lines.push(`    • Total: ${book.exemplaires.total}`);
+    lines.push(`    • Disponibles: ${book.exemplaires.disponibles}`);
+    lines.push(`    • Empruntés: ${book.exemplaires.empruntes}`);
+    lines.push('');
+
+    // Loans info
+    lines.push(`  📊 Statistiques d'emprunts:`);
+    lines.push(`    • Total emprunts: ${book.emprunts.total}`);
+    lines.push(`    • Actuellement empruntés: ${book.emprunts.actifs}`);
+    lines.push(`    • Retournés: ${book.emprunts.retournes}`);
+    lines.push('');
+  });
+
+  return lines.join('\n');
+}
+
+/**
+ * Answer queries about categories with real data
+ */
+async function answerCategoryQuery(question) {
+  const { data: allBooks, error } = await supabase
+    .from('livre')
+    .select('categorie');
+
+  if (error) throw error;
+
+  // Extract the category from question
+  const categories = [...new Set(allBooks.map(b => b.categorie).filter(c => c && c !== 'Updated'))];
+  const normalized = normalize(question);
+  
+  const matchedCategory = categories.find(cat => {
+    const normalizedCat = normalize(cat);
+    return normalized.includes(normalizedCat) || normalizedCat.includes(normalized) || normalized.includes(cat.toLowerCase());
+  });
+
+  if (!matchedCategory) {
     return null;
   }
 
   // Get books in category
-  const { data: books, error: booksError } = await supabase
+  const { data: books } = await supabase
     .from('livre')
-    .select('isbn, titre, auteur, categorie')
-    .ilike('categorie', `%${category}%`)
-    .limit(15);
+    .select('isbn, titre, auteur')
+    .eq('categorie', matchedCategory)
+    .order('titre', { ascending: true });
 
-  if (booksError) throw booksError;
-
-  if (!books || books.length === 0) {
-    return `Aucun livre trouvé dans la catégorie "${category}".`;
-  }
-
-  // Get exemplaire data for availability
-  const { data: exemplaires, error: exError } = await supabase
+  // Get exemplaire counts
+  const { data: exemplaires } = await supabase
     .from('exemplaire')
     .select('isbn, disponibilite');
 
-  if (exError) throw exError;
-
-  // Count available per ISBN
   const availability = {};
   exemplaires.forEach(ex => {
     if (!availability[ex.isbn]) {
@@ -156,12 +283,14 @@ async function answerBooksInCategory(question) {
     if (ex.disponibilite) availability[ex.isbn].disponibles++;
   });
 
-  const lines = [`Livres de la catégorie "${category}" (${books.length} trouvé(s)):`, ''];
-  books.forEach((b) => {
+  const lines = [`📚 Livres de la catégorie "${matchedCategory}" (${books?.length || 0} trouvé(s)):`, ''];
+  
+  books?.forEach((b) => {
     const avail = availability[b.isbn];
-    const status = avail && avail.disponibles > 0 ? `${avail.disponibles} disponible(s)` : 'En rupture';
+    const status = avail && avail.disponibles > 0 ? `${avail.disponibles}/${avail.total} disponible(s)` : 'En rupture';
     lines.push(`- "${b.titre}" par ${b.auteur} [${status}]`);
   });
+
   return lines.join('\n');
 }
 
@@ -346,7 +475,81 @@ async function queryAssistant(req, res) {
       return res.status(400).json({ message: 'Question requise' });
     }
 
-    // 0. Check FAQ table first — highest priority for predetermined Q&A
+    // ==================== PRIORITY 0: INTELLIGENT SEARCH ====================
+    // Try to intelligently extract keywords and search the database
+    // This handles: "How many times has X been borrowed?", "Tell me about book Y", etc.
+    const intelligentResult = await intelligentSearch(question);
+    if (intelligentResult) {
+      return res.json({
+        answer: intelligentResult,
+        source: 'database-intelligent'
+      });
+    }
+
+    const normalized = normalize(String(question));
+
+    // Pattern-based handlers with priority order
+    // PRIORITY 1: Database queries (actual book data) - CHECK FIRST!
+
+    // 1a. Check for category questions (BEFORE FAQ to get real data)
+    if (
+      normalized.includes('categor') ||
+      normalized.includes('genre') ||
+      normalized.includes('domaine') ||
+      normalized.includes('science') ||
+      normalized.includes('fantasy') ||
+      normalized.includes('thriller') ||
+      normalized.includes('aventure') ||
+      normalized.includes('dystopie') ||
+      normalized.includes('roman') ||
+      normalized.includes('poesie') ||
+      normalized.includes('theatre') ||
+      normalized.includes('conte') ||
+      normalized.includes('surreal') ||
+      normalized.includes('natural')
+    ) {
+      const answer = await answerCategoryQuery(question);
+      if (answer) {
+        return res.json({ answer, source: 'database' });
+      }
+    }
+
+    // 1b. Check for author-specific questions (BEFORE FAQ)
+    if (
+      normalized.includes('auteur') ||
+      normalized.includes('par ') ||
+      normalized.includes('de ')
+    ) {
+      const answer = await answerBooksByAuthor(question);
+      if (answer) {
+        return res.json({ answer, source: 'database' });
+      }
+    }
+
+    // 1c. Check for stock/availability for specific book (BEFORE FAQ)
+    if (
+      normalized.includes('stock') ||
+      normalized.includes('disponib') ||
+      normalized.includes('avail')
+    ) {
+      const answer = await answerAvailabilityForBook(question);
+      if (answer) {
+        return res.json({ answer, source: 'database' });
+      }
+    }
+
+    // 1d. Check for low stock/rupture questions
+    if (
+      normalized.includes('ruptur') ||
+      normalized.includes('stock bas') ||
+      normalized.includes('low stock') ||
+      normalized.includes('out of stock')
+    ) {
+      const answer = await answerLowStock();
+      return res.json({ answer, source: 'database' });
+    }
+
+    // PRIORITY 2: Check FAQ table (only if no database match found)
     try {
       const faqMatch = await findMatchingFaq(question);
       if (faqMatch) {
@@ -357,11 +560,9 @@ async function queryAssistant(req, res) {
       console.warn('[AI] FAQ lookup failed:', faqErr.message);
     }
 
-    const normalized = normalize(String(question));
+    // PRIORITY 3: Pattern-based policy answers
 
-    // Pattern-based handlers with priority order
-
-    // 1. Check lending policy questions
+    // 2. Check lending policy questions
     if (
       normalized.includes('politique') ||
       normalized.includes('regle') ||
@@ -372,7 +573,7 @@ async function queryAssistant(req, res) {
       return res.json({ answer });
     }
 
-    // 2. Check opening hours questions
+    // 3. Check opening hours questions
     if (
       normalized.includes('horaire') ||
       normalized.includes('ouvertur') ||
@@ -383,7 +584,7 @@ async function queryAssistant(req, res) {
       return res.json({ answer });
     }
 
-    // 3. Check reservation process questions
+    // 4. Check reservation process questions
     if (
       normalized.includes('reserv') ||
       normalized.includes('comment reserv') ||
@@ -393,67 +594,13 @@ async function queryAssistant(req, res) {
       return res.json({ answer });
     }
 
-    // 4. Check "my loans" questions
+    // 5. Check "my loans" questions
     if (normalized.includes('mes emprunt') || normalized.includes('my loan')) {
       const answer = await answerMyLoans(question, userId);
       return res.json({ answer });
     }
 
-    // 5. Check for low stock/rupture questions
-    if (
-      normalized.includes('ruptur') ||
-      normalized.includes('stock bas') ||
-      normalized.includes('low stock') ||
-      normalized.includes('out of stock')
-    ) {
-      const answer = await answerLowStock();
-      return res.json({ answer });
-    }
-
-    // 5a. Check for category questions (BEFORE general books to be more specific)
-    if (
-      normalized.includes('categor') ||
-      normalized.includes('genre') ||
-      normalized.includes('domaine') ||
-      normalized.includes('science-fiction') ||
-      normalized.includes('sciencefiction') ||
-      normalized.includes('fantasy') ||
-      normalized.includes('romance') ||
-      normalized.includes('thriller') ||
-      normalized.includes('historique') ||
-      normalized.includes('biographie')
-    ) {
-      const answer = await answerBooksInCategory(question);
-      if (answer) {
-        return res.json({ answer });
-      }
-    }
-
-    // 5b. Check for author-specific questions (BEFORE general books)
-    if (
-      normalized.includes('auteur') ||
-      normalized.includes('par ') ||
-      normalized.includes('de ')
-    ) {
-      const answer = await answerBooksByAuthor(question);
-      if (answer) {
-        return res.json({ answer });
-      }
-    }
-
-    // 5c. Check for stock/availability for specific book
-    if (
-      normalized.includes('stock') ||
-      normalized.includes('disponib') ||
-      normalized.includes('avail')
-    ) {
-      const answer = await answerAvailabilityForBook(question);
-      if (answer) {
-        return res.json({ answer });
-      }
-    }
-
-    // 6. Check for general catalog/books questions (AFTER specific queries)
+    // 6. Check for general catalog/books questions (fallback)
     if (
       normalized.includes('livr') ||
       normalized.includes('book') ||
