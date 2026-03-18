@@ -50,7 +50,7 @@ paths:
         '401':
           description: Erreur d'envoi
 
-  /ai/chat:
+  /ai/query:
     post:
       summary: Poser une question à l'assistant IA
       tags: [AI Assistant]
@@ -60,11 +60,14 @@ paths:
           application/json:
             schema:
               type: object
-              required: [message]
+              required: [question]
               properties:
-                message:
+                question:
                   type: string
                   example: "Quels sont les livres de Science-Fiction disponibles ?"
+                userId:
+                  type: string
+                  example: "student1"
       responses:
         '200':
           description: Réponse de l'IA générée avec succès
@@ -73,10 +76,49 @@ paths:
               schema:
                 type: object
                 properties:
-                  reply:
+                  answer:
                     type: string
         '500':
           description: Erreur serveur (Ollama hors ligne ou erreur DB)
+
+  /livres:
+    get:
+      summary: Liste tous les livres du catalogue
+      tags: [Catalogue]
+      parameters:
+        - in: query
+          name: search
+          schema: { type: string }
+        - in: query
+          name: categorie
+          schema: { type: string }
+        - in: query
+          name: sort
+          schema:
+            type: string
+            enum: [auteur, disponibilite, titre]
+      responses:
+        '200':
+          description: Liste des livres
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Livre'
+
+  /livres/{isbn}/dispo:
+    get:
+      summary: Récupère le stock réel pour un ISBN précis
+      tags: [Catalogue]
+      parameters:
+        - in: path
+          name: isbn
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Stock actuel
 
   /api/books:
     get:

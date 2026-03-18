@@ -2,6 +2,8 @@ const supabase = require('../db');
 
 const getStats = async (req, res) => {
     try {
+        const today = new Date().toISOString().split('T')[0];
+
         const [
             { count: totalBooks },
             { count: borrowedBooks },
@@ -12,13 +14,12 @@ const getStats = async (req, res) => {
         ] = await Promise.all([
             supabase.from('livre').select('*', { count: 'exact', head: true }),
             supabase.from('exemplaire').select('*', { count: 'exact', head: true }).eq('disponibilite', false),
-            supabase.from('emprunt').select('*', { count: 'exact', head: true }).eq('statut', 'ACTIF'),
-            supabase.from('emprunt').select(`
-                id,
-                date_retour_prevue
-            `, { count: 'exact', head: true })
-                .eq('statut', 'ACTIF')
-                .lt('date_retour_prevue', new Date().toISOString().split('T')[0]),
+            // Active loans: loans not yet returned (date_retour_reelle IS NULL)
+            supabase.from('emprunt').select('*', { count: 'exact', head: true }).is('date_retour_reelle', null),
+            // Overdue loans: active loans past due date (date_retour_reelle IS NULL AND date_retour_prevue < today)
+            supabase.from('emprunt').select('*', { count: 'exact', head: true })
+                .is('date_retour_reelle', null)
+                .lt('date_retour_prevue', today),
             supabase.from('reservation').select('*', { count: 'exact', head: true }).eq('statut', 'EN_ATTENTE'),
             supabase.from('utilisateur').select('*', { count: 'exact', head: true })
         ]);

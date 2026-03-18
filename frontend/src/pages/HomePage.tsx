@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { books as booksAPI, type Book } from "../lib/api";
 import { applyFilters, type Filters } from "../lib/filter";
 
-const CATEGORIES = ["All Categories", "Fiction", "Non-Fiction", "Science", "History", "Biography", "Technology", "Business"];
 const STATUSES = ["All Status", "Available", "Borrowed"];
 
 export function HomePage() {
@@ -35,6 +34,17 @@ export function HomePage() {
 
     fetchBooks();
   }, []);
+
+  // Compute unique categories from books
+  const categories = useMemo(() => {
+    const cats = new Set<string>();
+    cats.add("All Categories");
+    allBooks.forEach((book) => {
+      const cat = book.category || book.categorie;
+      if (cat) cats.add(cat);
+    });
+    return Array.from(cats).sort();
+  }, [allBooks]);
 
   const filtered = useMemo(() => applyFilters(allBooks, filters), [allBooks, filters]);
 
@@ -69,7 +79,7 @@ export function HomePage() {
                 }
                 className="w-full rounded-md border border-ink-100 bg-white px-3 py-2 text-xs text-ink-900 outline-none focus:border-brand-500 sm:w-44"
               >
-                {CATEGORIES.map((c) => (
+                {categories.map((c) => (
                   <option key={c} value={c}>
                     {c}
                   </option>
@@ -136,8 +146,8 @@ export function HomePage() {
                         className="h-72 w-full rounded border border-ink-100 object-cover"
                       />
                     ) : (
-                      <div className="flex h-72 items-center justify-center rounded border border-ink-100 bg-surface-100 text-sm font-semibold text-ink-500">
-                        No Cover
+                      <div className="flex h-72 items-center justify-center rounded border border-ink-100 bg-gradient-to-br from-brand-50 to-surface-100">
+                        <span className="text-6xl">📚</span>
                       </div>
                     )}
                   </div>

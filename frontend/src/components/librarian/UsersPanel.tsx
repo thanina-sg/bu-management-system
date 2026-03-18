@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { users as usersAPI, type User, type UserRole } from "../../lib/api";
 import { RoleBadge } from "../StatusBadges";
 import { AddUserForm } from "./AddUserForm";
 
-export function UsersPanel() {
+export function UsersPanel({ roleFilter }: { roleFilter?: UserRole[] } = {}) {
   const [users, setUsers] = useState<User[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFields, setEditFields] = useState<{ name?: string; email: string; role: UserRole }>({ email: "", role: "ETUDIANT" });
@@ -56,12 +56,33 @@ export function UsersPanel() {
     showToast(`"${user.name}" created as ${user.role}.`);
   };
 
-  const roleStats = {
-    Student: users.filter((u) => u.role === "ETUDIANT").length,
-    Teacher: users.filter((u) => u.role === "ENSEIGNANT").length,
-    Librarian: users.filter((u) => u.role === "BIBLIOTHECAIRE").length,
-    Admin: users.filter((u) => u.role === "ADMIN").length,
-  };
+  const filteredUsers = useMemo(() => {
+    if (!roleFilter || roleFilter.length === 0) return users;
+    return users.filter(u => roleFilter.includes(u.role));
+  }, [users, roleFilter]);
+
+  const roleStats = useMemo(() => {
+    const baseStats = {
+      Student: users.filter((u) => u.role === "ETUDIANT").length,
+      Teacher: users.filter((u) => u.role === "ENSEIGNANT").length,
+      Librarian: users.filter((u) => u.role === "BIBLIOTHECAIRE").length,
+      Admin: users.filter((u) => u.role === "ADMIN").length,
+    };
+    if (!roleFilter || roleFilter.length === 0) return baseStats;
+    return Object.fromEntries(
+      Object.entries(baseStats).filter(([_, count]) => count > 0)
+    ) as Record<string, number>;
+  }, [users, roleFilter]);
+
+  const panelTitle = useMemo(() => {
+    if (!roleFilter || roleFilter.length === 0) return "User Accounts";
+    const hasStudent = roleFilter.includes("ETUDIANT");
+    const hasTeacher = roleFilter.includes("ENSEIGNANT");
+    const hasLibrarian = roleFilter.includes("BIBLIOTHECAIRE");
+    if (hasStudent && hasTeacher) return "Students & Teachers";
+    if (hasLibrarian) return "Librarians";
+    return "User Accounts";
+  }, [roleFilter]);
 
   return (
     <div className="w-full space-y-6">
@@ -77,12 +98,12 @@ export function UsersPanel() {
         ))}
       </div>
 
-      <AddUserForm onAdd={handleAddUser} />
+      <AddUserForm onAdd={handleAddUser} roleFilter={roleFilter} />
 
       <div className="rounded-xl border border-ink-100 bg-white shadow-soft">
         <div className="border-b border-ink-100 px-5 py-4">
-          <h2 className="font-serif text-2xl text-ink-900">User Accounts</h2>
-          <p className="mt-1 text-xs text-ink-500">{users.length} user(s)</p>
+          <h2 className="font-serif text-2xl text-ink-900">{panelTitle}</h2>
+          <p className="mt-1 text-xs text-ink-500">{filteredUsers.length} user(s)</p>
         </div>
 
         {toast && <div className="mx-5 mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-semibold text-emerald-700">&#x2713; {toast}</div>}
@@ -95,7 +116,7 @@ export function UsersPanel() {
               </tr>
             </thead>
             <tbody>
-              {users.map((u) => (
+              {filteredUsers.map((u) => (
                 <tr key={u.id} className="border-b border-ink-100 last:border-b-0">
                   <td className="px-5 py-3 text-xs font-medium text-ink-700">{u.id}</td>
                   <td className="px-5 py-3">
@@ -136,7 +157,7 @@ export function UsersPanel() {
         </div>
 
         <div className="space-y-3 p-4 md:hidden">
-          {users.map((u) => (
+          {filteredUsers.map((u) => (
             <div key={u.id} className="rounded-lg border border-ink-100 bg-surface-50 p-4">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">

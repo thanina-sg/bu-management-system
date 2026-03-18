@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { books as booksAPI, type Book } from "../../lib/api";
 import { BookStatusBadge } from "../StatusBadges";
 import { AddBookForm } from "./AddBookForm";
@@ -22,6 +22,16 @@ export function BooksPanel({ role }: { role: LoggedInRole }) {
     };
     fetchBooks();
   }, []);
+
+  // Compute unique categories from books
+  const categories = useMemo(() => {
+    const cats = new Set<string>();
+    books.forEach((book) => {
+      const cat = book.category || book.categorie;
+      if (cat) cats.add(cat);
+    });
+    return Array.from(cats).sort();
+  }, [books]);
 
   const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(null), 3000); };
   const startEdit = (b: Book) => { setEditingId(b.id || b.isbn); setEditFields({ status: b.status || "Available", location: b.location || "", category: b.category || b.categorie || "" }); };
@@ -66,7 +76,7 @@ export function BooksPanel({ role }: { role: LoggedInRole }) {
 
   return (
     <div className="w-full space-y-6">
-      <AddBookForm onAdd={handleAddBook} />
+      <AddBookForm onAdd={handleAddBook} categories={categories} />
 
       <div className="rounded-xl border border-ink-100 bg-white shadow-soft">
         <div className="border-b border-ink-100 px-5 py-4">
@@ -97,7 +107,7 @@ export function BooksPanel({ role }: { role: LoggedInRole }) {
                   <td className="px-5 py-3 text-xs text-ink-700">{b.isbn}</td>
                   <td className="px-5 py-3">
                     {editingId === b.id
-                      ? <select value={editFields.category || ''} onChange={(e) => setEditFields((f) => ({ ...f, category: e.target.value }))} className="rounded border border-ink-100 bg-white px-2 py-1 text-xs text-ink-900 outline-none focus:border-brand-500"><option value="Computer Science">Computer Science</option><option value="Software Engineering">Software Engineering</option></select>
+                      ? <select value={editFields.category || ''} onChange={(e) => setEditFields((f) => ({ ...f, category: e.target.value }))} className="rounded border border-ink-100 bg-white px-2 py-1 text-xs text-ink-900 outline-none focus:border-brand-500"><option value="">Select category...</option>{categories.map((cat) => <option key={cat} value={cat}>{cat}</option>)}</select>
                       : <span className="text-xs text-ink-700">{b.categorie}</span>}
                   </td>
                   <td className="px-5 py-3 text-xs text-ink-700">{b.year}</td>
@@ -137,7 +147,7 @@ export function BooksPanel({ role }: { role: LoggedInRole }) {
             <div key={b.id} className="rounded-lg border border-ink-100 bg-surface-50 p-4">
               <div className="flex items-start gap-3">
                 {b.coverUrl ? <img src={b.coverUrl} alt="" className="h-16 w-11 shrink-0 rounded border border-ink-100 object-cover" />
-                  : <div className="flex h-16 w-11 shrink-0 items-center justify-center rounded border border-ink-100 bg-surface-100 text-[8px] text-ink-500">N/A</div>}
+                  : <div className="flex h-16 w-11 shrink-0 items-center justify-center rounded border border-ink-100 bg-gradient-to-br from-brand-50 to-surface-100 text-lg">📚</div>}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0"><div className="truncate text-xs font-semibold text-ink-900">{b.title || b.titre}</div><div className="text-[10px] text-ink-500">{b.author || b.auteur}</div></div>

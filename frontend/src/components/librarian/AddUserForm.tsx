@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { users as usersAPI, type User, type UserRole } from "../../lib/api";
 
-export function AddUserForm({ onAdd }: { onAdd: (user: User) => void }) {
+export function AddUserForm({ onAdd, roleFilter }: { onAdd: (user: User) => void; roleFilter?: UserRole[] }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -9,7 +9,30 @@ export function AddUserForm({ onAdd }: { onAdd: (user: User) => void }) {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const reset = () => { setName(""); setEmail(""); setRole("ETUDIANT"); setError(""); };
+  const availableRoles: { value: UserRole; label: string }[] = useMemo(() => {
+    if (!roleFilter || roleFilter.length === 0) {
+      return [
+        { value: "ETUDIANT", label: "Student" },
+        { value: "ENSEIGNANT", label: "Teacher" },
+        { value: "BIBLIOTHECAIRE", label: "Librarian" },
+        { value: "ADMIN", label: "Admin" },
+      ];
+    }
+    return [
+      { value: "ETUDIANT", label: "Student" },
+      { value: "ENSEIGNANT", label: "Teacher" },
+      { value: "BIBLIOTHECAIRE", label: "Librarian" },
+      { value: "ADMIN", label: "Admin" },
+    ].filter(r => roleFilter.includes(r.value));
+  }, [roleFilter]);
+
+  const reset = () => { 
+    setName(""); 
+    setEmail(""); 
+    const defaultRole = availableRoles.length > 0 ? availableRoles[0].value : "ETUDIANT"; 
+    setRole(defaultRole); 
+    setError(""); 
+  };
 
   const handleAdd = async () => {
     if (!name.trim() || !email.trim()) { setError("Name and Email are required."); return; }
@@ -59,10 +82,9 @@ export function AddUserForm({ onAdd }: { onAdd: (user: User) => void }) {
           <label className="mb-1 block text-xs font-medium text-ink-500">Role</label>
           <select value={role} onChange={(e) => setRole(e.target.value as UserRole)}
             className="w-full rounded-lg border border-ink-100 bg-white px-3 py-2 text-sm text-ink-900 outline-none focus:border-brand-500">
-            <option value="ETUDIANT">Student</option>
-            <option value="ENSEIGNANT">Teacher</option>
-            <option value="BIBLIOTHECAIRE">Librarian</option>
-            <option value="ADMIN">Admin</option>
+            {availableRoles.map(r => (
+              <option key={r.value} value={r.value}>{r.label}</option>
+            ))}
           </select>
         </div>
       </div>

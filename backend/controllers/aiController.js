@@ -385,7 +385,26 @@ async function queryAssistant(req, res) {
       return res.json({ answer });
     }
 
-    // 6. Check for author-specific questions
+    // 5a. Check for category questions (BEFORE general books to be more specific)
+    if (
+      normalized.includes('categor') ||
+      normalized.includes('genre') ||
+      normalized.includes('domaine') ||
+      normalized.includes('science-fiction') ||
+      normalized.includes('sciencefiction') ||
+      normalized.includes('fantasy') ||
+      normalized.includes('romance') ||
+      normalized.includes('thriller') ||
+      normalized.includes('historique') ||
+      normalized.includes('biographie')
+    ) {
+      const answer = await answerBooksInCategory(question);
+      if (answer) {
+        return res.json({ answer });
+      }
+    }
+
+    // 5b. Check for author-specific questions (BEFORE general books)
     if (
       normalized.includes('auteur') ||
       normalized.includes('par ') ||
@@ -397,19 +416,7 @@ async function queryAssistant(req, res) {
       }
     }
 
-    // 7. Check for category questions
-    if (
-      normalized.includes('categor') ||
-      normalized.includes('genre') ||
-      normalized.includes('domaine')
-    ) {
-      const answer = await answerBooksInCategory(question);
-      if (answer) {
-        return res.json({ answer });
-      }
-    }
-
-    // 8. Check for stock/availability for specific book
+    // 5c. Check for stock/availability for specific book
     if (
       normalized.includes('stock') ||
       normalized.includes('disponib') ||
@@ -421,36 +428,55 @@ async function queryAssistant(req, res) {
       }
     }
 
-    // 9. Fallback to Ollama for general questions
-    console.log(`[AI] Falling back to Ollama for: ${question}`);
-    
-    const response = await ollama.chat({
-      model: OLLAMA_MODEL,
-      messages: [
-        {
-          role: 'system',
-          content: `Tu es l'assistant IA d'une bibliothèque universitaire. 
-          Réponds poliment et utilement en français. 
-          Aide les étudiants avec des conseils sur la recherche de livres, 
-          l'étude et les ressources éducatives.
-          Limite tes réponses à 200 mots maximum.`
-        },
-        {
-          role: 'user',
-          content: question
+    // 6. Check for general catalog/books questions (AFTER specific queries)
+    if (
+      normalized.includes('livr') ||
+      normalized.includes('book') ||
+      normalized.includes('catalog') ||
+      normalized.includes('catalogue') ||
+      normalized.includes('quels') ||
+      normalized.includes('avez') ||
+      normalized.includes('have')
+    ) {
+      try {
+        // Get all books as fallback for general questions
+        const { data: books, error } = await supabase
+          .from('livre')
+          .select('isbn, titre, auteur, categorie')
+          .limit(10);
+        
+        if (!error && books && books.length > 0) {
+          const lines = ['Voici quelques livres de notre bibliothèque:', ''];
+          books.forEach((b) => {
+            lines.push(`📖 "${b.titre}" par ${b.auteur} [${b.categorie}]`);
+          });
+          lines.push('');
+          lines.push('Tapez une catégorie (ex: "Science-Fiction") ou un auteur pour plus de détails!');
+          return res.json({ answer: lines.join('\n') });
         }
-      ]
-    });
-
-    if (!response || !response.message || typeof response.message.content !== 'string') {
-      return res.status(502).json({ message: 'Réponse invalide du modèle IA' });
+      } catch (e) {
+        console.error('[AI] Error listing books:', e.message);
+      }
     }
 
-    res.json({ answer: response.message.content });
+    // 7. Fallback: Generic helpful response
+    const fallbackResponse = `Bienvenue à la Bibliothèque UHA! 📚
+
+Je suis l'assistant IA de la bibliothèque. Je peux vous aider avec:
+- 📖 Lister nos livres disponibles
+- 🔍 Chercher des livres par auteur ou catégorie
+- 📊 Vérifier la disponibilité de livres
+- 📋 Voir vos emprunts actifs
+- 📅 Horaires de la bibliothèque
+- 🎫 Information sur les réservations
+
+Comment puis-je vous aider?`;
+
+    res.json({ answer: fallbackResponse });
 
   } catch (err) {
     console.error('[AI] Error:', err.message);
-    res.status(500).json({ message: 'Erreur lors du traitement de la question' });
+    res.status(500).json({ message: 'Erreur lors du traitement de la question', error: err.message });
   }
 }
 

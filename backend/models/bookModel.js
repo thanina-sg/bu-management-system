@@ -10,8 +10,7 @@ const getBooks = async (filters = {}) => {
     auteur,
     categorie,
     annee,
-    resume,
-    created_at
+    resume
   `);
 
   if (search) {

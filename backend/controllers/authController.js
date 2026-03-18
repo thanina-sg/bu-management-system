@@ -4,7 +4,17 @@ const register = async (req, res) => {
     const { email, name, nom, prenom, role } = req.body;
 
     try {
-        const user = await registerUser(email, nom || prenom, name || 'User', role);
+        // Map English role names to French database enum values
+        const roleMap = {
+            'Student': 'ETUDIANT',
+            'Teacher': 'ENSEIGNANT',
+            'Librarian': 'BIBLIOTHECAIRE',
+            'Admin': 'ADMINISTRATEUR'
+        };
+
+        const mappedRole = roleMap[role] || role || 'ETUDIANT';
+
+        const user = await registerUser(email, nom || prenom, name || 'User', mappedRole);
 
         res.status(201).json({ 
             message: "User registered successfully",
@@ -55,7 +65,7 @@ const userLogout = async (req, res) => {
 
 const getCurrentUserData = async (req, res) => {
     try {
-        const userId = req.user?.id || req.body.userId;
+        const userId = req.user?.id || req.body.userId || req.query.userId;
         if (!userId) throw new Error("User ID required");
 
         const user = await getCurrentUser(userId);

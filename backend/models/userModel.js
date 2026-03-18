@@ -1,4 +1,10 @@
 const supabase = require('../db');
+const crypto = require('crypto');
+
+// Simple password hashing function (not for production)
+const hashPassword = (password) => {
+  return crypto.createHash('sha256').update(password).digest('hex');
+};
 
 // --- GET ALL USERS (Admin only) ---
 const getAllUsers = async () => {
@@ -41,7 +47,7 @@ const getCurrentUser = async (userId) => {
 
 // --- CREATE USER (Admin only) ---
 const createUser = async (userData) => {
-  const { name, email, role } = userData;
+  const { name, email, role, password } = userData;
   const [prenom, ...nomParts] = name.split(' ');
   const nom = nomParts.join(' ') || 'User';
 
@@ -49,8 +55,16 @@ const createUser = async (userData) => {
     'Student': 'ETUDIANT',
     'Teacher': 'ENSEIGNANT',
     'Librarian': 'BIBLIOTHECAIRE',
-    'Admin': 'ADMIN'
+    'Admin': 'ADMINISTRATEUR'
   };
+
+  // Password is required
+  if (!password) {
+    throw new Error('Password is required when creating a user');
+  }
+  const passwordHash = hashPassword(password);
+
+  const mappedRole = roleMap[role] || 'ETUDIANT';
 
   const { data: user, error } = await supabase
     .from('utilisateur')
@@ -58,7 +72,9 @@ const createUser = async (userData) => {
       nom,
       prenom,
       email,
-      role: roleMap[role] || 'ETUDIANT'
+      role: mappedRole,
+      password_hash: passwordHash,
+      statut: 'ACTIF'
     }])
     .select();
 
@@ -68,7 +84,7 @@ const createUser = async (userData) => {
     id: user[0].id,
     name,
     email: user[0].email,
-    role
+    role: user[0].role
   };
 };
 
@@ -88,7 +104,7 @@ const updateUser = async (userId, updates) => {
       'Student': 'ETUDIANT',
       'Teacher': 'ENSEIGNANT',
       'Librarian': 'BIBLIOTHECAIRE',
-      'Admin': 'ADMIN'
+      'Admin': 'ADMINISTRATEUR'
     };
     updateData.role = roleMap[role] || 'ETUDIANT';
   }

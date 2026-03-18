@@ -1,18 +1,18 @@
 import { useState } from "react";
 import { books as booksAPI, type Book } from "../../lib/api";
 
-export function AddBookForm({ onAdd }: { onAdd: (book: Book) => void }) {
+export function AddBookForm({ onAdd, categories = [] }: { onAdd: (book: Book) => void; categories?: string[] }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
   const [isbn, setIsbn] = useState("");
   const [year, setYear] = useState("");
-  const [category, setCategory] = useState("Science");
+  const [category, setCategory] = useState(categories[0] || "");
   const [description, setDescription] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const reset = () => { setTitle(""); setAuthor(""); setIsbn(""); setYear(""); setCategory("Science"); setDescription(""); setError(""); };
+  const reset = () => { setTitle(""); setAuthor(""); setIsbn(""); setYear(""); setCategory(categories[0] || ""); setDescription(""); setError(""); };
 
   const handleAdd = async () => {
     if (!title.trim() || !author.trim() || !isbn.trim() || !year.trim()) { 
@@ -69,7 +69,7 @@ export function AddBookForm({ onAdd }: { onAdd: (book: Book) => void }) {
         <div><label className="mb-1 block text-xs font-medium text-ink-500">Year *</label><input value={year} onChange={(e) => setYear(e.target.value)} placeholder="e.g. 2019" className="w-full rounded-lg border border-ink-100 bg-white px-3 py-2 text-sm text-ink-900 outline-none focus:border-brand-500" /></div>
         <div><label className="mb-1 block text-xs font-medium text-ink-500">Category</label>
           <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full rounded-lg border border-ink-100 bg-white px-3 py-2 text-sm text-ink-900 outline-none focus:border-brand-500">
-            <option value="Science">Science</option><option value="Technology">Technology</option><option value="History">History</option><option value="Fiction">Fiction</option>
+            <option value="">Select category...</option>{categories.map((cat) => <option key={cat} value={cat}>{cat}</option>)}
           </select>
         </div>
         <div className="sm:col-span-2"><label className="mb-1 block text-xs font-medium text-ink-500">Description</label><textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="w-full rounded-lg border border-ink-100 bg-white px-3 py-2 text-sm text-ink-900 outline-none focus:border-brand-500" /></div>

@@ -75,8 +75,8 @@ export function DetailsPage() {
                 {book.coverUrl ? (
                   <img src={book.coverUrl} alt={book.title} className="h-[438px] w-full rounded object-cover" />
                 ) : (
-                  <div className="flex h-[438px] items-center justify-center rounded bg-surface-100 text-sm text-ink-500">
-                    No Cover
+                  <div className="flex h-[438px] items-center justify-center rounded bg-gradient-to-br from-brand-50 to-surface-100">
+                    <span className="text-9xl">📚</span>
                   </div>
                 )}
               </div>
@@ -152,8 +152,8 @@ export function DetailsPage() {
                           className="h-48 w-full rounded border border-ink-100 object-cover"
                         />
                       ) : (
-                        <div className="flex h-48 items-center justify-center rounded border border-ink-100 bg-surface-100 text-sm text-ink-500">
-                          No Cover
+                        <div className="flex h-48 items-center justify-center rounded border border-ink-100 bg-gradient-to-br from-brand-50 to-surface-100">
+                          <span className="text-4xl">📚</span>
                         </div>
                       )}
                       <div className="mt-2 line-clamp-1 text-sm font-semibold text-ink-900">{r.title}</div>

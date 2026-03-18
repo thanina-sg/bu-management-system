@@ -1,17 +1,27 @@
 const supabase = require('../db');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
+// Simple password hashing function
+const hashPassword = (password) => {
+  return crypto.createHash('sha256').update(password).digest('hex');
+};
+
 // --- REGISTER ---
-const registerUser = async (email, nom, prenom, role) => {
+const registerUser = async (email, nom, prenom, role, password) => {
+    const passwordHash = hashPassword(password || `${email}:default`);
+    
     const { data, error: dbError } = await supabase
         .from('utilisateur')
         .insert([{ 
             email, 
             nom, 
             prenom, 
-            role: role || 'ETUDIANT'
+            role: role || 'ETUDIANT',
+            password_hash: passwordHash,
+            statut: 'ACTIF'
         }])
         .select(); 
 
@@ -47,7 +57,7 @@ const loginStaff = async (email, password) => {
         .from('utilisateur')
         .select('*')
         .eq('email', email)
-        .in('role', ['BIBLIOTHECAIRE', 'ADMIN'])
+        .in('role', ['BIBLIOTHECAIRE', 'ADMINISTRATEUR'])
         .single();
 
     if (error || !user) throw new Error("Accès refusé - utilisateur non autorisé");

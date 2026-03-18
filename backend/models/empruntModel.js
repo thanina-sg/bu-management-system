@@ -3,6 +3,7 @@ const supabase = require('../db');
 // --- GET LOANS (list, optionally filtered by student) ---
 const getLoans = async (filters = {}) => {
   const { studentId, status } = filters;
+  const today = new Date().toISOString().split('T')[0];
 
   let query = supabase.from('emprunt').select(`
     id,
@@ -10,18 +11,31 @@ const getLoans = async (filters = {}) => {
     id_exemplaire,
     date_emprunt,
     date_retour_prevue,
-    date_retour_reelle,
-    statut
+    date_retour_reelle
   `);
 
   if (studentId) query = query.eq('id_utilisateur', studentId);
-  if (status) query = query.eq('statut', status);
 
   const { data, error } = await query;
   if (error) throw error;
 
-  // Enrich with book and user info
+  // Enrich with book and user info, and calculate status
   const loans = await Promise.all(data.map(async (loan) => {
+    // Determine status based on return dates
+    let loanStatus;
+    if (loan.date_retour_reelle) {
+      loanStatus = 'Returned';
+    } else if (loan.date_retour_prevue < today) {
+      loanStatus = 'Overdue';
+    } else {
+      loanStatus = 'Active';
+    }
+
+    // Filter by status if requested
+    if (status && loanStatus !== status) {
+      return null;
+    }
+
     const { data: book } = await supabase
       .from('exemplaire')
       .select('isbn')
@@ -42,11 +56,11 @@ const getLoans = async (filters = {}) => {
       loanDate: loan.date_emprunt,
       returnDateExpected: loan.date_retour_prevue,
       returnDateActual: loan.date_retour_reelle,
-      status: loan.statut === 'ACTIF' ? 'Active' : loan.statut === 'RETOURNE' ? 'Returned' : 'Overdue'
+      status: loanStatus
     };
   }));
 
-  return loans;
+  return loans.filter(loan => loan !== null);
 };
 
 // --- POST LOAN (create new loan) ---
@@ -61,15 +75,14 @@ const createLoan = async (studentId, isbn, returnDate) => {
 
   if (exError || !exemplaire) throw new Error("Aucun exemplaire disponible");
 
-  // Create loan
+  // Create loan (no statut field - use dates only)
   const { data: loan, error: loanError } = await supabase
     .from('emprunt')
     .insert([{
       id_utilisateur: studentId,
       id_exemplaire: exemplaire.id_exemplaire,
       date_emprunt: new Date().toISOString().split('T')[0],
-      date_retour_prevue: returnDate,
-      statut: 'ACTIF'
+      date_retour_prevue: returnDate
     }])
     .select();
 
@@ -109,12 +122,11 @@ const returnLoan = async (loanId, returnDate) => {
 
   if (fetchError) throw fetchError;
 
-  // Update loan
+  // Update loan (only date_retour_reelle, no statut field)
   const { data: updated, error: updateError } = await supabase
     .from('emprunt')
     .update({
-      date_retour_reelle: returnDate,
-      statut: 'RETOURNE'
+      date_retour_reelle: returnDate
     })
     .eq('id', loanId)
     .select();
