@@ -1,10 +1,8 @@
 const { registerUser, loginStudent, loginStaff, logout, getCurrentUser } = require('../models/authModel');
 
 const register = async (req, res) => {
-    const { email, name, nom, prenom, role } = req.body;
-
+    const { email, nom, prenom, role, password } = req.body; 
     try {
-        // Map English role names to French database enum values
         const roleMap = {
             'Student': 'ETUDIANT',
             'Teacher': 'ENSEIGNANT',
@@ -14,7 +12,7 @@ const register = async (req, res) => {
 
         const mappedRole = roleMap[role] || role || 'ETUDIANT';
 
-        const user = await registerUser(email, nom || prenom, name || 'User', mappedRole);
+        const user = await registerUser(email, nom, prenom, mappedRole, password); 
 
         res.status(201).json({ 
             message: "User registered successfully",
