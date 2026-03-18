@@ -216,25 +216,40 @@ async function intelligentSearch(question) {
   // Build response
   const lines = [`📚 Information sur ${bookDetails.length} livre(s) trouvé(s):`, ''];
 
-  bookDetails.forEach(book => {
+  for (const book of bookDetails) {
     lines.push(`**"${book.titre}"** par ${book.auteur}`);
     lines.push(`ISBN: ${book.isbn} | Catégorie: ${book.categorie}`);
     lines.push('');
     
+    // Get and include book summary (skip the duplicate title/metadata lines)
+    const summary = await getBookSummary(book.isbn);
+    if (summary) {
+      const summaryLines = summary.split('\n').slice(2); // Skip title and metadata from getBookSummary
+      lines.push(summaryLines.join('\n'));
+      lines.push('');
+    }
+    
     // Exemplaires info
-    lines.push(`  📖 Exemplaires:`);
-    lines.push(`    • Total: ${book.exemplaires.total}`);
-    lines.push(`    • Disponibles: ${book.exemplaires.disponibles}`);
-    lines.push(`    • Empruntés: ${book.exemplaires.empruntes}`);
+    lines.push(`📕 **Exemplaires:**`);
+    lines.push(`  • Total: ${book.exemplaires.total}`);
+    lines.push(`  • Disponibles: ${book.exemplaires.disponibles}`);
+    lines.push(`  • Empruntés: ${book.exemplaires.empruntes}`);
     lines.push('');
 
     // Loans info
-    lines.push(`  📊 Statistiques d'emprunts:`);
-    lines.push(`    • Total emprunts: ${book.emprunts.total}`);
-    lines.push(`    • Actuellement empruntés: ${book.emprunts.actifs}`);
-    lines.push(`    • Retournés: ${book.emprunts.retournes}`);
+    lines.push(`📊 **Statistiques d'emprunts:**`);
+    lines.push(`  • Total emprunts: ${book.emprunts.total}`);
+    lines.push(`  • Actuellement empruntés: ${book.emprunts.actifs}`);
+    lines.push(`  • Retournés: ${book.emprunts.retournes}`);
     lines.push('');
-  });
+
+    // Get and include recommendations
+    const recommendations = await getSimilarBooks(book.isbn);
+    if (recommendations) {
+      lines.push(recommendations);
+      lines.push('');
+    }
+  }
 
   return lines.join('\n');
 }
@@ -424,6 +439,160 @@ Pour plus d'informations, contactez l'équipe de la bibliothèque.`;
 }
 
 /**
+ * Get book summary/resume from database
+ */
+async function getBookSummary(isbn) {
+  const { data: book, error } = await supabase
+    .from('livre')
+    .select('titre, auteur, resume, annee, categorie')
+    .eq('isbn', isbn)
+    .single();
+
+  if (error || !book) return null;
+
+  const lines = [];
+  lines.push(`📖 **${book.titre}**`);
+  lines.push(`Auteur: ${book.auteur} | Année: ${book.annee || 'N/A'} | Catégorie: ${book.categorie}`);
+  
+  if (book.resume) {
+    lines.push('');
+    lines.push('**Résumé:**');
+    lines.push(book.resume);
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Get user penalties/fines (if userId provided)
+ */
+async function getUserPenalties(userId) {
+  if (!userId) return null;
+
+  const { data: penalties, error } = await supabase
+    .from('penalite')
+    .select('id, motif, points_montant, statut')
+    .eq('id_utilisateur', userId)
+    .eq('statut', 'A_PAYER');
+
+  if (error || !penalties || penalties.length === 0) return null;
+
+  const totalAmount = penalties.reduce((sum, p) => sum + (p.points_montant || 0), 0);
+  
+  const lines = [
+    `⚠️ Vous avez ${penalties.length} pénalité(s) à payer (Total: ${totalAmount.toFixed(2)}€):`,
+    ''
+  ];
+
+  penalties.forEach(p => {
+    lines.push(`- ${p.motif}: ${p.points_montant?.toFixed(2) || '0'}€`);
+  });
+
+  return lines.join('\n');
+}
+
+/**
+ * Get user reservations (if userId provided)
+ */
+async function getUserReservations(userId) {
+  if (!userId) return null;
+
+  const { data: reservations, error } = await supabase
+    .from('reservation')
+    .select(`
+      id,
+      isbn,
+      date_reservation,
+      statut,
+      position_file,
+      livre:isbn (titre, auteur)
+    `)
+    .eq('id_utilisateur', userId)
+    .eq('statut', 'EN_ATTENTE')
+    .order('date_reservation', { ascending: true });
+
+  if (error || !reservations || reservations.length === 0) return null;
+
+  const lines = [
+    `📋 Vous avez ${reservations.length} réservation(s):`,
+    ''
+  ];
+
+  reservations.forEach(res => {
+    const book = res.livre;
+    lines.push(`- "${book.titre}" par ${book.auteur}`);
+    lines.push(`  Position dans la file: ${res.position_file}`);
+    lines.push(`  Réservé le: ${res.date_reservation?.split('T')[0] || 'N/A'}`);
+    lines.push('');
+  });
+
+  return lines.join('\n');
+}
+
+/**
+ * Get similar/recommended books
+ */
+async function getSimilarBooks(isbn) {
+  const { data: similar, error } = await supabase
+    .from('livre_similitude')
+    .select(`
+      isbn_cible,
+      score_similitude,
+      livre_cible:isbn_cible (titre, auteur, categorie)
+    `)
+    .eq('isbn_source', isbn)
+    .order('score_similitude', { ascending: false })
+    .limit(5);
+
+  if (error || !similar || similar.length === 0) return null;
+
+  const lines = [
+    `💡 **Recommandations similaires:**`,
+    ''
+  ];
+
+  similar.forEach(rec => {
+    const book = rec.livre_cible;
+    const score = (rec.score_similitude * 100).toFixed(0);
+    lines.push(`- "${book.titre}" par ${book.auteur} [${book.categorie}] (similitude: ${score}%)`);
+  });
+
+  return lines.join('\n');
+}
+
+/**
+ * Enhanced FAQ search using keyword array and active filter
+ */
+async function answerFaqWithKeywords(question) {
+  const normalized = normalize(question);
+  
+  const { data: faqs, error } = await supabase
+    .from('faq')
+    .select('id, question, answer, mots_cles, categorie')
+    .eq('actif', true)
+    .order('ordre', { ascending: true });
+
+  if (error || !faqs) return null;
+
+  // Search by mots_cles array
+  const matches = faqs.filter(faq => {
+    if (!faq.mots_cles || !Array.isArray(faq.mots_cles)) {
+      return false;
+    }
+    
+    return faq.mots_cles.some(mot => {
+      const normalizedMot = normalize(mot);
+      return normalized.includes(normalizedMot) || normalizedMot.includes(normalized);
+    });
+  });
+
+  if (matches.length === 0) return null;
+
+  // Return best match
+  return matches[0].answer;
+}
+
+/**
  * Answer: Opening hours
  */
 async function answerOpeningHours() {
@@ -475,18 +644,32 @@ async function queryAssistant(req, res) {
       return res.status(400).json({ message: 'Question requise' });
     }
 
+    const normalized = normalize(String(question));
+
     // ==================== PRIORITY 0: INTELLIGENT SEARCH ====================
     // Try to intelligently extract keywords and search the database
     // This handles: "How many times has X been borrowed?", "Tell me about book Y", etc.
-    const intelligentResult = await intelligentSearch(question);
-    if (intelligentResult) {
-      return res.json({
-        answer: intelligentResult,
-        source: 'database-intelligent'
-      });
+    // ONLY trigger for specific book queries (not generic category searches)
+    const hasSpecificQuery = 
+      normalized.includes('tell') || 
+      normalized.includes('parle') || 
+      normalized.includes('raconte') ||
+      normalized.includes('info') ||
+      normalized.includes('comment') ||
+      normalized.includes('combien') ||
+      normalized.includes('statistique') ||
+      normalized.includes('how many') ||
+      question.match(/"[^"]+"/); // Has quoted text
+    
+    if (hasSpecificQuery) {
+      const intelligentResult = await intelligentSearch(question);
+      if (intelligentResult) {
+        return res.json({
+          answer: intelligentResult,
+          source: 'database-intelligent'
+        });
+      }
     }
-
-    const normalized = normalize(String(question));
 
     // Pattern-based handlers with priority order
     // PRIORITY 1: Database queries (actual book data) - CHECK FIRST!
@@ -549,7 +732,43 @@ async function queryAssistant(req, res) {
       return res.json({ answer, source: 'database' });
     }
 
-    // PRIORITY 2: Check FAQ table (only if no database match found)
+    // 1e. Check for user-specific penalti questions (if userId provided)
+    if (userId && (
+      normalized.includes('penalite') ||
+      normalized.includes('amende') ||
+      normalized.includes('devoir') ||
+      normalized.includes('payer')
+    )) {
+      const penalties = await getUserPenalties(userId);
+      if (penalties) {
+        return res.json({ answer: penalties, source: 'database-user' });
+      }
+    }
+
+    // 1f. Check for user reservations (if userId provided)
+    if (userId && (
+      normalized.includes('reserv') ||
+      normalized.includes('reserve') ||
+      normalized.includes('ma reserve') ||
+      normalized.includes('mes reserv')
+    )) {
+      const reservations = await getUserReservations(userId);
+      if (reservations) {
+        return res.json({ answer: reservations, source: 'database-user' });
+      }
+    }
+
+    // PRIORITY 2: Check FAQ with keyword matching (enhanced)
+    try {
+      const faqMatch = await answerFaqWithKeywords(question);
+      if (faqMatch) {
+        return res.json({ answer: faqMatch, source: 'faq-keywords' });
+      }
+    } catch (faqErr) {
+      console.warn('[AI] FAQ keyword search failed:', faqErr.message);
+    }
+
+    // PRIORITY 2b: Fallback FAQ search (original method)
     try {
       const faqMatch = await findMatchingFaq(question);
       if (faqMatch) {
