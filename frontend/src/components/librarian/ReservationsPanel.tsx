@@ -26,7 +26,11 @@ export function ReservationsPanel() {
     fetchData();
   }, []);
 
-  const userName = (id: string) => users.find((s) => s.id === id)?.name ?? users.find((s) => s.id === id)?.nom ?? id;
+  const userName = (id: string) => {
+    const user = users.find((s) => s.id === id);
+    if (!user) return id;
+    return `${user.prenom || ''} ${user.nom || ''}`.trim() || user.email || id;
+  };
 
   const startEdit = (r: Reservation) => { setEditingId(r.id); setEditStatus(r.statut); };
   const cancelEdit = () => setEditingId(null);
@@ -35,9 +39,9 @@ export function ReservationsPanel() {
       await reservationsAPI.update(id, editStatus as any);
       setReservations((prev) => prev.map((r) => (r.id === id ? { ...r, statut: editStatus } : r)));
       setEditingId(null);
-      showToast(`Reservation ${id} updated to "${editStatus}".`);
+      showToast(`Reservation ${id} mise a jour: "${editStatus}".`);
     } catch (err) {
-      showToast("Failed to update reservation.");
+      showToast("Echec de la mise a jour de la reservation.");
       console.error(err);
     }
   };
@@ -59,11 +63,11 @@ export function ReservationsPanel() {
             <thead>
               <tr className="border-b border-ink-100 text-[10px] font-semibold uppercase tracking-wide text-ink-500">
                 <th className="px-5 py-3">ID</th>
-                <th className="px-5 py-3">Student</th>
-                <th className="px-5 py-3">Book</th>
+                <th className="px-5 py-3">Usager</th>
+                <th className="px-5 py-3">Livre</th>
                 <th className="px-5 py-3">Date</th>
-                <th className="px-5 py-3">Queue</th>
-                <th className="px-5 py-3">Status</th>
+                <th className="px-5 py-3">File</th>
+                <th className="px-5 py-3">Statut</th>
                 <th className="px-5 py-3">Actions</th>
               </tr>
             </thead>
@@ -79,17 +83,17 @@ export function ReservationsPanel() {
                     {editingId === r.id ? (
                       <select value={editStatus} onChange={(e) => setEditStatus(e.target.value as 'EN_ATTENTE' | 'PRETE' | 'ANNULEE')}
                         className="rounded border border-ink-100 bg-white px-2 py-1 text-xs text-ink-900 outline-none focus:border-brand-500">
-                        <option value="EN_ATTENTE">Pending</option><option value="PRETE">Ready</option><option value="ANNULEE">Cancelled</option>
+                        <option value="EN_ATTENTE">En attente</option><option value="PRETE">Prete</option><option value="ANNULEE">Annulee</option>
                       </select>
                     ) : <ReservationStatusBadge status={r.statut} />}
                   </td>
                   <td className="px-5 py-3">
                     {editingId === r.id ? (
                       <div className="flex gap-2">
-                        <button onClick={() => saveEdit(r.id)} className="rounded bg-brand-700 px-3 py-1 text-[10px] font-semibold text-white hover:bg-brand-600">Save</button>
-                        <button onClick={cancelEdit} className="rounded border border-ink-100 px-3 py-1 text-[10px] font-semibold text-ink-500 hover:bg-surface-50">Cancel</button>
+                        <button onClick={() => saveEdit(r.id)} className="rounded bg-brand-700 px-3 py-1 text-[10px] font-semibold text-white hover:bg-brand-600">Enregistrer</button>
+                        <button onClick={cancelEdit} className="rounded border border-ink-100 px-3 py-1 text-[10px] font-semibold text-ink-500 hover:bg-surface-50">Annuler</button>
                       </div>
-                    ) : <button onClick={() => startEdit(r)} className="rounded border border-ink-100 px-3 py-1 text-[10px] font-semibold text-ink-700 hover:bg-surface-50">Edit</button>}
+                    ) : <button onClick={() => startEdit(r)} className="rounded border border-ink-100 px-3 py-1 text-[10px] font-semibold text-ink-700 hover:bg-surface-50">Modifier</button>}
                   </td>
                 </tr>
               ))}
@@ -113,12 +117,12 @@ export function ReservationsPanel() {
                   <div className="flex items-center gap-2">
                     <select value={editStatus} onChange={(e) => setEditStatus(e.target.value as 'EN_ATTENTE' | 'PRETE' | 'ANNULEE')}
                       className="rounded border border-ink-100 bg-white px-2 py-1 text-xs text-ink-900 outline-none focus:border-brand-500">
-                      <option value="EN_ATTENTE">Pending</option><option value="PRETE">Ready</option><option value="ANNULEE">Cancelled</option>
+                      <option value="EN_ATTENTE">En attente</option><option value="PRETE">Prete</option><option value="ANNULEE">Annulee</option>
                     </select>
-                    <button onClick={() => saveEdit(r.id)} className="rounded bg-brand-700 px-3 py-1 text-[10px] font-semibold text-white hover:bg-brand-600">Save</button>
-                    <button onClick={cancelEdit} className="rounded border border-ink-100 px-3 py-1 text-[10px] font-semibold text-ink-500 hover:bg-surface-50">Cancel</button>
+                    <button onClick={() => saveEdit(r.id)} className="rounded bg-brand-700 px-3 py-1 text-[10px] font-semibold text-white hover:bg-brand-600">Enregistrer</button>
+                    <button onClick={cancelEdit} className="rounded border border-ink-100 px-3 py-1 text-[10px] font-semibold text-ink-500 hover:bg-surface-50">Annuler</button>
                   </div>
-                ) : <button onClick={() => startEdit(r)} className="rounded border border-ink-100 px-3 py-1 text-[10px] font-semibold text-ink-700 hover:bg-surface-50">Edit</button>}
+                ) : <button onClick={() => startEdit(r)} className="rounded border border-ink-100 px-3 py-1 text-[10px] font-semibold text-ink-700 hover:bg-surface-50">Modifier</button>}
               </div>
             </div>
           ))}

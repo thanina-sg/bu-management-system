@@ -36,12 +36,12 @@ const getReservations = async (filters = {}) => {
 
     return {
       id: res.id,
-      studentId: res.id_utilisateur,
+      id_utilisateur: res.id_utilisateur,
       isbn: res.isbn,
-      bookTitle: book?.titre,
-      date: res.date_reservation,
-      queuePosition: res.position_file,
-      status: res.statut === 'EN_ATTENTE' ? 'Pending' : res.statut === 'PRETE' ? 'Ready' : 'Cancelled'
+      titre_livre: book?.titre,
+      date_reservation: res.date_reservation,
+      position_file: res.position_file,
+      statut: res.statut,
     };
   }));
 
@@ -82,12 +82,12 @@ const createReservation = async (studentId, isbn) => {
 
   return {
     id: reservation[0].id,
-    studentId: reservation[0].id_utilisateur,
+    id_utilisateur: reservation[0].id_utilisateur,
     isbn,
-    bookTitle: book?.titre,
-    date: reservation[0].date_reservation,
-    queuePosition,
-    status: 'Pending'
+    titre_livre: book?.titre,
+    date_reservation: reservation[0].date_reservation,
+    position_file: queuePosition,
+    statut: 'EN_ATTENTE',
   };
 };
 
@@ -115,12 +115,12 @@ const updateReservation = async (reservationId, status) => {
 
   return {
     id: updated[0].id,
-    studentId: updated[0].id_utilisateur,
+    id_utilisateur: updated[0].id_utilisateur,
     isbn: updated[0].isbn,
-    bookTitle: book?.titre,
-    date: updated[0].date_reservation,
-    queuePosition: updated[0].position_file,
-    status
+    titre_livre: book?.titre,
+    date_reservation: updated[0].date_reservation,
+    position_file: updated[0].position_file,
+    statut: statusMap[status] || status,
   };
 };
 

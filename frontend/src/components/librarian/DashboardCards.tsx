@@ -7,20 +7,20 @@ export function DashboardCards({ role, books, loans, reservations, users }: { ro
   const usersData = users || [];
 
   const totalBooks = booksData.length;
-  const availableBooks = booksData.filter((b: any) => b.status === "Available" || b.disponible === true).length;
-  const borrowedBooks = booksData.filter((b: any) => b.status === "Borrowed" || b.disponible === false).length;
-  const activeLoans = loansData.filter((l: any) => l.statut === "ACTIF" || l.status === "Active").length;
-  const overdueLoans = loansData.filter((l: any) => l.statut === "EN_RETARD" || l.status === "Overdue").length;
-  const pendingReservations = reservationsData.filter((r: any) => r.statut === "EN_ATTENTE" || r.status === "Pending").length;
+  const availableBooks = booksData.filter((b: any) => b.disponible === true).length;
+  const borrowedBooks = booksData.filter((b: any) => b.disponible === false).length;
+  const activeLoans = loansData.filter((l: any) => l.statut === "ACTIF").length;
+  const overdueLoans = loansData.filter((l: any) => l.statut === "EN_RETARD").length;
+  const pendingReservations = reservationsData.filter((r: any) => r.statut === "EN_ATTENTE").length;
   const totalUsers = usersData.length;
 
   const cards: { label: string; value: number; accent: string; sub?: string; adminOnly?: boolean }[] = [
-    { label: "Total Books", value: totalBooks, accent: "text-brand-700", sub: `${availableBooks} available` },
-    { label: "Borrowed", value: borrowedBooks, accent: "text-rose-600" },
-    { label: "Active Loans", value: activeLoans, accent: "text-blue-600" },
-    { label: "Overdue", value: overdueLoans, accent: "text-amber-600" },
-    { label: "Reservations", value: pendingReservations, accent: "text-violet-600", sub: "pending" },
-    { label: "Users", value: totalUsers, accent: "text-ink-700", adminOnly: true },
+    { label: "Total livres", value: totalBooks, accent: "text-brand-700", sub: `${availableBooks} disponibles` },
+    { label: "Empruntes", value: borrowedBooks, accent: "text-rose-600" },
+    { label: "Emprunts actifs", value: activeLoans, accent: "text-blue-600" },
+    { label: "En retard", value: overdueLoans, accent: "text-amber-600" },
+    { label: "Reservations", value: pendingReservations, accent: "text-violet-600", sub: "en attente" },
+    { label: "Utilisateurs", value: totalUsers, accent: "text-ink-700", adminOnly: true },
   ];
 
   const visible = cards.filter((c) => !c.adminOnly || role === "Admin");

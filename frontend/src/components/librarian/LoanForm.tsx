@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { users as usersAPI, books as booksAPI, type User, type Book } from "../../lib/api";
+import { users as usersAPI, books as booksAPI, loans as loansAPI, type User, type Book } from "../../lib/api";
 import { FormResultBanner } from "./FormResultBanner";
 import type { FormResult } from "./types";
 
@@ -9,8 +9,8 @@ export function LoanForm() {
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [selectedUserId, setSelectedUserId] = useState("");
   const [isbn, setIsbn] = useState("");
-  const [loanDate, setLoanDate] = useState("2026-03-17");
-  const [returnDate, setReturnDate] = useState("2026-03-31");
+  const [loanDate, setLoanDate] = useState(new Date().toISOString().split('T')[0]);
+  const [returnDate, setReturnDate] = useState(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
   const [result, setResult] = useState<FormResult>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -22,7 +22,7 @@ export function LoanForm() {
         const users = await usersAPI.getAll();
         setAllUsers(users);
       } catch (err) {
-        console.error("Failed to fetch users:", err);
+        console.error("Impossible de charger les utilisateurs:", err);
       }
     };
     fetchUsers();
@@ -52,14 +52,14 @@ export function LoanForm() {
 
     try {
       if (!selectedUserId.trim() || !isbn.trim()) {
-        setResult({ type: "error", message: "Please select a student/user and enter an ISBN." });
+        setResult({ type: "error", message: "Veuillez selectionner un usager et saisir un ISBN." });
         return;
       }
 
       // Get selected student
       const student = allUsers.find(u => u.id === selectedUserId);
       if (!student) {
-        setResult({ type: "error", message: "Student not found." });
+        setResult({ type: "error", message: "Usager introuvable." });
         return;
       }
 
@@ -67,34 +67,39 @@ export function LoanForm() {
       const books = await booksAPI.getAll();
       const book: Book | undefined = books.find((b: Book) => b.isbn === isbn.trim());
       if (!book) {
-        setResult({ type: "error", message: `Book not found: ISBN "${isbn}" does not match any resource in the catalog.` });
+        setResult({ type: "error", message: `Livre introuvable: l'ISBN "${isbn}" ne correspond a aucune ressource du catalogue.` });
         return;
       }
 
-      const bookStatus = book.status || (book.disponible === false ? "Borrowed" : "Available");
-      if (bookStatus === "Borrowed") {
-        const bookTitle = book.title || book.titre;
-        setResult({ type: "error", message: `"${bookTitle}" is currently borrowed and not available for loan.` });
+      if (!book.disponible) {
+        const bookTitle = book.titre;
+        setResult({ type: "error", message: `"${bookTitle}" est actuellement emprunte et indisponible.` });
         return;
       }
+
+      await loansAPI.create({
+        id_utilisateur: selectedUserId,
+        isbn: isbn.trim(),
+        date_retour_prevue: returnDate,
+      });
 
       const studentName = `${student.prenom || ''} ${student.nom || ''}`.trim();
-      const bookTitle = book.title || book.titre;
+      const bookTitle = book.titre;
       
       setResult({
         type: "success",
-        title: "Loan Registered Successfully",
+        title: "Emprunt enregistre avec succes",
         details: {
-          "Student": `${studentName} (${student.email})`,
-          "Book": bookTitle,
+          "Usager": `${studentName} (${student.email})`,
+          "Livre": bookTitle,
           "ISBN": book.isbn,
-          "Loan Date": loanDate,
-          "Expected Return": returnDate,
-          "Status": "Active",
+          "Date d'emprunt": loanDate,
+          "Retour prevu": returnDate,
+          "Statut": "ACTIF",
         },
       });
     } catch (error) {
-      setResult({ type: "error", message: `Error validating loan: ${error instanceof Error ? error.message : "Unknown error"}` });
+      setResult({ type: "error", message: `Erreur lors de la validation de l'emprunt: ${error instanceof Error ? error.message : "Erreur inconnue"}` });
     } finally {
       setIsLoading(false);
     }
@@ -103,20 +108,20 @@ export function LoanForm() {
   return (
     <div className="mx-auto w-full max-w-sm">
       <div className="rounded-xl border border-ink-100 border-t-4 border-t-brand-700 bg-white p-4 text-left shadow-soft">
-        <div className="font-serif text-2xl text-ink-900 md:text-4xl">New Loan Registration</div>
+        <div className="font-serif text-2xl text-ink-900 md:text-4xl">Nouvel emprunt</div>
         <p className="mt-2 text-sm text-ink-500 md:text-base">
-          Enter student and resource details to authorize loan.
+          Saisissez les informations de l'usager et de la ressource pour enregistrer l'emprunt.
         </p>
 
         <div className="mt-5 rounded-lg border border-ink-100 bg-surface-50 p-3">
           <div>
-            <label className="mb-2 block text-sm font-semibold text-ink-900">&#x25CE; Search Student/User</label>
+            <label className="mb-2 block text-sm font-semibold text-ink-900">&#x25CE; Rechercher un usager</label>
             <div className="relative">
               <input
                 value={userSearch}
                 onChange={(e) => setUserSearch(e.target.value)}
                 onFocus={() => userSearch.trim() && setShowDropdown(true)}
-                placeholder="Type email or name..."
+                placeholder="Tapez un e-mail ou un nom..."
                 className="w-full rounded-lg border border-ink-100 bg-white px-3 py-2 text-sm text-ink-900 outline-none focus:border-brand-500 md:text-base"
               />
               {showDropdown && filteredUsers.length > 0 && (
@@ -140,12 +145,12 @@ export function LoanForm() {
             </div>
             {selectedUserId && (
               <div className="mt-2 rounded-lg bg-green-50 px-2 py-1.5 text-xs text-green-800">
-                ✓ Selected: {userSearch}
+                ✓ Selectionne: {userSearch}
               </div>
             )}
           </div>
           <div className="mt-3">
-            <label className="mb-2 block text-sm font-semibold text-ink-900">&#x25A1; Book ISBN</label>
+            <label className="mb-2 block text-sm font-semibold text-ink-900">&#x25A1; ISBN du livre</label>
             <input
               value={isbn}
               onChange={(e) => setIsbn(e.target.value)}
@@ -157,12 +162,12 @@ export function LoanForm() {
 
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <label className="mb-2 block text-sm font-semibold text-ink-900">&#x25F7; Loan Date</label>
+            <label className="mb-2 block text-sm font-semibold text-ink-900">&#x25F7; Date d'emprunt</label>
             <input type="date" value={loanDate} onChange={(e) => setLoanDate(e.target.value)}
               className="w-full rounded-lg border border-ink-100 bg-white px-3 py-2 text-sm text-ink-900 outline-none focus:border-brand-500 md:text-base" />
           </div>
           <div>
-            <label className="mb-2 block text-sm font-semibold text-ink-900">&#x25F7; Return Date</label>
+            <label className="mb-2 block text-sm font-semibold text-ink-900">&#x25F7; Date de retour</label>
             <input type="date" value={returnDate} onChange={(e) => setReturnDate(e.target.value)}
               className="w-full rounded-lg border border-ink-100 bg-white px-3 py-2 text-sm text-ink-900 outline-none focus:border-brand-500 md:text-base" />
           </div>
@@ -172,7 +177,7 @@ export function LoanForm() {
 
         <button type="button" onClick={handleValidate} disabled={isLoading}
           className="mt-6 w-full rounded-lg bg-brand-700 px-3 py-2.5 text-base font-semibold text-white shadow-soft hover:bg-brand-600 disabled:bg-ink-300 md:text-lg">
-          {isLoading ? "Validating..." : "Validate Loan"}
+          {isLoading ? "Validation..." : "Valider l'emprunt"}
         </button>
       </div>
     </div>

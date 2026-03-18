@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { register, studentLogin, staffLogin, userLogout, getCurrentUserData } = require('../controllers/authController');
+const { authenticateToken } = require('../middleware/auth');
 
 // POST /api/auth/student/login
 router.post('/student/login', studentLogin);
@@ -12,7 +13,7 @@ router.post('/staff/login', staffLogin);
 router.post('/logout', userLogout);
 
 // GET /api/auth/me (compatibility)
-router.get('/me', getCurrentUserData);
+router.get('/me', authenticateToken, getCurrentUserData);
 
 // POST /api/auth/register
 router.post('/register', register);

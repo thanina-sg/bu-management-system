@@ -1,22 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { queryAssistant } = require('../controllers/aiController');
+const { queryAssistant, getFaq } = require('../controllers/aiController');
 
-/**
- * POST /api/ai/query
- * Query the AI assistant with a natural language question
- * 
- * Request body:
- * {
- *   "question": "string - the question to ask",
- *   "userId": "string (optional) - user UUID for personalized answers"
- * }
- * 
- * Response:
- * {
- *   "answer": "string - the assistant's response"
- * }
- */
+// GET /api/ai/faq — returns all active FAQ entries for the chat widget
+router.get('/faq', getFaq);
+
+// POST /api/ai/query — answers a natural-language question
 router.post('/query', queryAssistant);
 
 module.exports = router;

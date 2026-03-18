@@ -1,59 +1,577 @@
-openapi: 3.0.0
+openapi: 3.0.3
 info:
-  title: API Bibliothèque UHA
-  description: API de gestion avec assistant IA local (Ollama) et authentification Magic Link.
-  version: 1.0.0
+  title: API Bibliotheque UHA
+  version: 2.0.0
+  description: Contrat API canonique en DTO francais.
 
 servers:
   - url: http://localhost:5000
-    description: Serveur de développement local
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    AuthLoginBody:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string }
+        password: { type: string }
+
+    Utilisateur:
+      type: object
+      required: [id, nom, prenom, email, role]
+      properties:
+        id: { type: string }
+        nom: { type: string }
+        prenom: { type: string }
+        email: { type: string }
+        role:
+          type: string
+          enum: [ETUDIANT, ENSEIGNANT, BIBLIOTHECAIRE, ADMINISTRATEUR]
+        statut: { type: string, nullable: true }
+
+    AuthLoginResponse:
+      type: object
+      required: [user, token]
+      properties:
+        user:
+          $ref: '#/components/schemas/Utilisateur'
+        token:
+          type: string
+        role:
+          type: string
+
+    Livre:
+      type: object
+      required: [id, isbn, titre, auteur, categorie, disponible]
+      properties:
+        id: { type: string }
+        isbn: { type: string }
+        titre: { type: string }
+        auteur: { type: string }
+        categorie: { type: string }
+        annee: { type: integer, nullable: true }
+        resume: { type: string, nullable: true }
+        disponible: { type: boolean }
+        localisation: { type: string, nullable: true }
+        couverture_url: { type: string, nullable: true }
+
+    Emprunt:
+      type: object
+      required: [id, id_utilisateur, isbn, date_emprunt, date_retour_prevue, statut]
+      properties:
+        id: { type: string }
+        id_utilisateur: { type: string }
+        isbn: { type: string }
+        titre_livre: { type: string, nullable: true }
+        date_emprunt: { type: string, format: date }
+        date_retour_prevue: { type: string, format: date }
+        date_retour_reelle: { type: string, format: date, nullable: true }
+        statut:
+          type: string
+          enum: [ACTIF, RETOURNE, EN_RETARD]
+
+    Reservation:
+      type: object
+      required: [id, id_utilisateur, isbn, date_reservation, position_file, statut]
+      properties:
+        id: { type: string }
+        id_utilisateur: { type: string }
+        isbn: { type: string }
+        titre_livre: { type: string, nullable: true }
+        date_reservation: { type: string, format: date-time }
+        position_file: { type: integer }
+        statut:
+          type: string
+          enum: [EN_ATTENTE, PRETE, ANNULEE]
+
+    Stats:
+      type: object
+      properties:
+        totalBooks: { type: integer }
+        availableBooks: { type: integer }
+        borrowedBooks: { type: integer }
+        activeLoans: { type: integer }
+        overdueLoans: { type: integer }
+        pendingReservations: { type: integer }
+        totalUsers: { type: integer }
 
 paths:
-  /auth/register:
+  /api/auth/student/login:
     post:
-      summary: Inscription d'un nouvel utilisateur
-      tags: [Authentification]
+      tags: [auth]
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required: [email, nom, prenom]
-              properties:
-                email: { type: string, example: "etudiant@uha.fr" }
-                nom: { type: string, example: "Dupont" }
-                prenom: { type: string, example: "Jean" }
-                role: { type: string, enum: [ETUDIANT, ENSEIGNANT, BIBLIOTHECAIRE] }
-      responses:
-        '201':
-          description: Utilisateur créé
-        '400':
-          description: Erreur lors de l'inscription
-
-  /auth/login:
-    post:
-      summary: Connexion par Email (Magic Link)
-      tags: [Authentification]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [email]
-              properties:
-                email: { type: string, example: "etudiant@uha.fr" }
+              $ref: '#/components/schemas/AuthLoginBody'
       responses:
         '200':
-          description: Email de connexion envoyé
-        '401':
-          description: Erreur d'envoi
+          description: Connexion etudiant/enseignant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthLoginResponse'
 
-  /ai/query:
+  /api/auth/staff/login:
     post:
-      summary: Poser une question à l'assistant IA
-      tags: [AI Assistant]
+      tags: [auth]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthLoginBody'
+      responses:
+        '200':
+          description: Connexion personnel
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthLoginResponse'
+
+  /api/auth/logout:
+    post:
+      tags: [auth]
+      responses:
+        '200':
+          description: Deconnexion
+
+  /api/auth/me:
+    get:
+      tags: [auth]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Profil courant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Utilisateur'
+
+  /api/books:
+    get:
+      tags: [livres]
+      parameters:
+        - in: query
+          name: q
+          schema: { type: string }
+        - in: query
+          name: categorie
+          schema: { type: string }
+        - in: query
+          name: disponible
+          schema: { type: boolean }
+      responses:
+        '200':
+          description: Liste des livres
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Livre'
+    post:
+      tags: [livres]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [titre, auteur, isbn, annee, categorie, localisation]
+              properties:
+                titre: { type: string }
+                auteur: { type: string }
+                isbn: { type: string }
+                annee: { type: integer }
+                categorie: { type: string }
+                localisation: { type: string }
+                resume: { type: string }
+      responses:
+        '201':
+          description: Livre cree
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Livre'
+
+  /api/books/{id}:
+    get:
+      tags: [livres]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Livre detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Livre'
+    put:
+      tags: [livres]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                disponible: { type: boolean }
+                localisation: { type: string }
+                categorie: { type: string }
+      responses:
+        '200':
+          description: Livre modifie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Livre'
+    delete:
+      tags: [livres]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '204':
+          description: Livre supprime
+
+  /api/books/{id}/recommendations:
+    get:
+      tags: [livres]
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Recommandations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Livre'
+
+  /api/loans:
+    get:
+      tags: [emprunts]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: id_utilisateur
+          schema: { type: string }
+        - in: query
+          name: statut
+          schema:
+            type: string
+            enum: [ACTIF, RETOURNE, EN_RETARD]
+      responses:
+        '200':
+          description: Liste des emprunts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Emprunt'
+    post:
+      tags: [emprunts]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id_utilisateur, isbn, date_retour_prevue]
+              properties:
+                id_utilisateur: { type: string }
+                isbn: { type: string }
+                date_retour_prevue: { type: string, format: date }
+      responses:
+        '201':
+          description: Emprunt cree
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Emprunt'
+
+  /api/loans/{id}/return:
+    put:
+      tags: [emprunts]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [date_retour_reelle]
+              properties:
+                date_retour_reelle: { type: string, format: date }
+      responses:
+        '200':
+          description: Emprunt retourne
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Emprunt'
+
+  /api/reservations:
+    get:
+      tags: [reservations]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: query
+          name: id_utilisateur
+          schema: { type: string }
+        - in: query
+          name: statut
+          schema:
+            type: string
+            enum: [EN_ATTENTE, PRETE, ANNULEE]
+      responses:
+        '200':
+          description: Liste des reservations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Reservation'
+    post:
+      tags: [reservations]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [isbn]
+              properties:
+                id_utilisateur: { type: string }
+                isbn: { type: string }
+      responses:
+        '201':
+          description: Reservation creee
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+
+  /api/reservations/{id}:
+    put:
+      tags: [reservations]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [statut]
+              properties:
+                statut:
+                  type: string
+                  enum: [EN_ATTENTE, PRETE, ANNULEE]
+      responses:
+        '200':
+          description: Reservation modifiee
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+    delete:
+      tags: [reservations]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '204':
+          description: Reservation supprimee
+
+  /api/users:
+    get:
+      tags: [utilisateurs]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Liste utilisateurs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Utilisateur'
+    post:
+      tags: [utilisateurs]
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nom, prenom, email, role]
+              properties:
+                nom: { type: string }
+                prenom: { type: string }
+                email: { type: string }
+                role:
+                  type: string
+                  enum: [ETUDIANT, ENSEIGNANT, BIBLIOTHECAIRE, ADMINISTRATEUR]
+                password: { type: string }
+      responses:
+        '201':
+          description: Utilisateur cree
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Utilisateur'
+
+  /api/users/me:
+    get:
+      tags: [utilisateurs]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Profil courant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Utilisateur'
+
+  /api/users/{id}:
+    put:
+      tags: [utilisateurs]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                nom: { type: string }
+                prenom: { type: string }
+                email: { type: string }
+                role:
+                  type: string
+                  enum: [ETUDIANT, ENSEIGNANT, BIBLIOTHECAIRE, ADMINISTRATEUR]
+      responses:
+        '200':
+          description: Utilisateur modifie
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Utilisateur'
+    delete:
+      tags: [utilisateurs]
+      security:
+        - bearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '204':
+          description: Utilisateur supprime
+
+  /api/stats:
+    get:
+      tags: [stats]
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Statistiques globales
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Stats'
+
+  /api/ai/faq:
+    get:
+      tags: [ai]
+      summary: Liste toutes les entrées FAQ actives
+      responses:
+        '200':
+          description: Liste des FAQ
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: string }
+                        question: { type: string }
+                        answer: { type: string }
+                        categorie: { type: string }
+                        ordre: { type: integer }
+
+  /api/ai/query:
+    post:
+      tags: [ai]
       requestBody:
         required: true
         content:
@@ -62,130 +580,35 @@ paths:
               type: object
               required: [question]
               properties:
-                question:
-                  type: string
-                  example: "Quels sont les livres de Science-Fiction disponibles ?"
-                userId:
-                  type: string
-                  example: "student1"
+                question: { type: string }
+                userId: { type: string }
       responses:
         '200':
-          description: Réponse de l'IA générée avec succès
+          description: Reponse assistant
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  answer:
-                    type: string
-        '500':
-          description: Erreur serveur (Ollama hors ligne ou erreur DB)
+                  answer: { type: string }
 
-  /livres:
+  /api/admin/rules:
     get:
-      summary: Liste tous les livres du catalogue
-      tags: [Catalogue]
-      parameters:
-        - in: query
-          name: search
-          schema: { type: string }
-        - in: query
-          name: categorie
-          schema: { type: string }
-        - in: query
-          name: sort
-          schema:
-            type: string
-            enum: [auteur, disponibilite, titre]
+      tags: [admin]
+      security:
+        - bearerAuth: []
       responses:
         '200':
-          description: Liste des livres
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Livre'
+          description: Regles admin
 
-  /livres/{isbn}/dispo:
-    get:
-      summary: Récupère le stock réel pour un ISBN précis
-      tags: [Catalogue]
-      parameters:
-        - in: path
-          name: isbn
-          required: true
-          schema: { type: string }
-      responses:
-        '200':
-          description: Stock actuel
-
-  /api/books:
-    get:
-      summary: Liste tous les livres du catalogue
-      tags: [Catalogue]
-      parameters:
-        - in: query
-          name: search
-          schema: { type: string }
-        - in: query
-          name: categorie
-          schema: { type: string }
-        - in: query
-          name: sort
-          schema:
-            type: string
-            enum: [auteur, disponibilite, titre]
-      responses:
-        '200':
-          description: Liste des livres
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Livre'
-
-  /api/books/{isbn}/dispo:
-    get:
-      summary: Récupère le stock réel pour un ISBN précis
-      tags: [Catalogue]
-      parameters:
-        - in: path
-          name: isbn
-          required: true
-          schema: { type: string }
-      responses:
-        '200':
-          description: Stock actuel
-
-  /emprunts:
-    get:
-      summary: Liste les emprunts
-      tags: [Emprunts]
-      parameters:
-        - in: query
-          name: utilisateurId
-          schema: { type: string, format: uuid }
-      responses:
-        '200':
-          description: Emprunts enregistrés
-
-  /admin/rules:
-    get:
-      summary: Récupère les règles système
-      tags: [Administrateur]
-      responses:
-        '200':
-          description: Liste des règles
-
-  /admin/rules/{ruleId}:
+  /api/admin/rules/{ruleId}:
     put:
-      summary: Met à jour l’état d’une règle
-      tags: [Administrateur]
+      tags: [admin]
+      security:
+        - bearerAuth: []
       parameters:
-        - name: ruleId
-          in: path
+        - in: path
+          name: ruleId
           required: true
           schema: { type: string }
       requestBody:
@@ -194,120 +617,27 @@ paths:
           application/json:
             schema:
               type: object
+              required: [active]
               properties:
-                id_utilisateur: { type: string, format: uuid }
-                isbn: { type: string }
-      responses:
-        '201':
-          description: Règle mise à jour
-
-  /admin/users:
-    get:
-      summary: Récupère les comptes administrables
-      tags: [Administrateur]
+                active: { type: boolean }
       responses:
         '200':
-          description: Liste des utilisateurs
+          description: Regle mise a jour
 
-  /admin/metrics:
+  /api/admin/users:
     get:
-      summary: Statistiques globales du back-office
-      tags: [Administrateur]
+      tags: [admin]
+      security:
+        - bearerAuth: []
       responses:
         '200':
-          description: Statistiques récupérées
+          description: Utilisateurs administrables
 
-  /users:
+  /api/admin/metrics:
     get:
-      summary: Liste des utilisateurs
-      tags: [Utilisateurs]
+      tags: [admin]
+      security:
+        - bearerAuth: []
       responses:
         '200':
-          description: Liste récupérée
-
-  /reservations:
-    get:
-      summary: Liste des réservations
-      tags: [Réservations]
-      responses:
-        '200':
-          description: Réservations réalisées
-
-components:
-  schemas:
-    Utilisateur:
-      type: object
-      properties:
-        id: { type: string, format: uuid }
-        nom: { type: string }
-        prenom: { type: string }
-        email: { type: string }
-        role: { type: string }
-        statut: { type: string, example: "ACTIF" }
-
-    Livre:
-      type: object
-      required: [isbn, titre, auteur, categorie, annee]
-      properties:
-        isbn: { type: string }
-        titre: { type: string }
-        auteur: { type: string }
-        categorie: { type: string }
-        annee: { type: integer }
-        est_disponible: { type: boolean }
-        exemplaire:
-          type: object
-          properties:
-            id_exemplaire: { type: string, format: uuid }
-            disponibilite: { type: boolean }
-            etat: { type: string }
-            localisation: { type: string }
-
-    Emprunt:
-      type: object
-      properties:
-        id: { type: integer }
-        dateEmprunt: { type: string, format: date }
-        dateRetourPrevue: { type: string, format: date }
-        estRendu: { type: boolean }
-        utilisateurId: { type: string, format: uuid }
-        exemplaireId: { type: integer }
-        dateRetourReelle: { type: string, format: date, nullable: true }
-
-    SystemRule:
-      type: object
-      properties:
-        id: { type: string }
-        title: { type: string }
-        description: { type: string }
-        active: { type: boolean }
-
-    AdminUser:
-      type: object
-      properties:
-        id: { type: string }
-        fullName: { type: string }
-        email: { type: string }
-        role: { type: string }
-        status: { type: string }
-
-    Reservation:
-      type: object
-      properties:
-        id: { type: string }
-        id_utilisateur: { type: string }
-        isbn: { type: string }
-        statut: { type: string }
-
-    Exemplaire:
-      type: object
-      properties:
-        id_exemplaire: { type: string }
-        isbn: { type: string }
-        disponibilite: { type: boolean }
-
-    AdminMetrics:
-      type: object
-      properties:
-        totalBooks: { type: integer }
-        activeEmprunts: { type: integer }
+          description: Metriques admin

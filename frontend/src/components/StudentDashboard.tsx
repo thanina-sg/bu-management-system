@@ -23,8 +23,8 @@ export function StudentDashboard({ user, onLogout }: { user: User; onLogout: () 
       try {
         // Fetch loans, reservations, and catalog
         const [loansData, reservationsData, booksData] = await Promise.all([
-          loansAPI.getAll({ studentId: user.id }),
-          reservationsAPI.getAll({ studentId: user.id }),
+          loansAPI.getAll({ id_utilisateur: user.id }),
+          reservationsAPI.getAll({ id_utilisateur: user.id }),
           booksAPI.getAll(),
         ]);
 
@@ -37,11 +37,11 @@ export function StudentDashboard({ user, onLogout }: { user: User; onLogout: () 
         // Create a map of ISBN -> Book for quick lookup
         const booksMap = new Map<string, Book>();
         booksData.forEach(book => {
-          booksMap.set(book.isbn || book.id || '', book);
+          booksMap.set(book.isbn || '', book);
         });
         setBooks(booksMap);
       } catch (err) {
-        setError("Failed to load your dashboard. Please try again.");
+        setError("Impossible de charger votre espace. Veuillez reessayer.");
         console.error(err);
       } finally {
         setIsLoading(false);
@@ -54,7 +54,7 @@ export function StudentDashboard({ user, onLogout }: { user: User; onLogout: () 
   const activeLoans = userLoans.filter((l) => l.statut === "ACTIF" || l.statut === "EN_RETARD").length;
   const returnedLoans = userLoans.filter((l) => l.statut === "RETOURNE").length;
 
-  const initials = (user.name || user.nom || "").split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+  const initials = `${user.prenom || ''} ${user.nom || ''}`.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -63,11 +63,11 @@ export function StudentDashboard({ user, onLogout }: { user: User; onLogout: () 
 
   const cancelReservation = async (id: string) => {
     try {
-      await reservationsAPI.update(id, 'ANNULEE' as any);
+      await reservationsAPI.update(id, 'ANNULEE');
       setUserReservations((prev) => prev.filter((r) => r.id !== id));
-      showToast("Reservation cancelled.");
+      showToast("Reservation annulee.");
     } catch (err) {
-      showToast("Failed to cancel reservation.");
+      showToast("Echec de l'annulation de la reservation.");
       console.error(err);
     }
 
@@ -83,12 +83,12 @@ export function StudentDashboard({ user, onLogout }: { user: User; onLogout: () 
               {initials}
             </div>
             <div>
-              <div className="text-sm font-semibold text-ink-900">{user.name}</div>
+              <div className="text-sm font-semibold text-ink-900">{`${user.prenom || ''} ${user.nom || ''}`.trim()}</div>
               <div className="text-[11px] text-ink-500">{user.role} &middot; {user.id}</div>
             </div>
           </div>
           <button onClick={onLogout} className="text-[10px] font-semibold text-ink-500 hover:text-ink-700">
-            Sign Out
+            Se deconnecter
           </button>
         </div>
       </div>
@@ -96,15 +96,15 @@ export function StudentDashboard({ user, onLogout }: { user: User; onLogout: () 
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-2 px-5 pt-4">
         <div className="rounded-lg border border-ink-100 bg-surface-50 p-2.5 text-center">
-          <div className="text-[9px] font-semibold uppercase tracking-wide text-ink-500">Active</div>
+          <div className="text-[9px] font-semibold uppercase tracking-wide text-ink-500">Actifs</div>
           <div className="mt-0.5 font-serif text-xl font-bold text-blue-600">{activeLoans}</div>
         </div>
         <div className="rounded-lg border border-ink-100 bg-surface-50 p-2.5 text-center">
-          <div className="text-[9px] font-semibold uppercase tracking-wide text-ink-500">Returned</div>
+          <div className="text-[9px] font-semibold uppercase tracking-wide text-ink-500">Retournes</div>
           <div className="mt-0.5 font-serif text-xl font-bold text-emerald-600">{returnedLoans}</div>
         </div>
         <div className="rounded-lg border border-ink-100 bg-surface-50 p-2.5 text-center">
-          <div className="text-[9px] font-semibold uppercase tracking-wide text-ink-500">Reserved</div>
+          <div className="text-[9px] font-semibold uppercase tracking-wide text-ink-500">Reserves</div>
           <div className="mt-0.5 font-serif text-xl font-bold text-amber-600">{userReservations.length}</div>
         </div>
       </div>
@@ -117,7 +117,7 @@ export function StudentDashboard({ user, onLogout }: { user: User; onLogout: () 
             ? "flex-1 rounded-md bg-brand-700 px-3 py-1.5 text-[10px] font-semibold text-white"
             : "flex-1 rounded-md px-3 py-1.5 text-[10px] font-semibold text-ink-500 hover:text-ink-700"}
         >
-          Loan History ({userLoans.length})
+          Historique des emprunts ({userLoans.length})
         </button>
         <button
           onClick={() => setTab("reservations")}
@@ -138,8 +138,8 @@ export function StudentDashboard({ user, onLogout }: { user: User; onLogout: () 
       {/* Content */}
       <div className="max-h-[360px] overflow-y-auto px-5 py-4">
         {isLoading && (
-          <div className="py-6 text-center">
-            <div className="text-[10px] text-ink-500">Loading your dashboard...</div>
+            <div className="py-6 text-center">
+            <div className="text-[10px] text-ink-500">Chargement de votre espace...</div>
           </div>
         )}
 
@@ -154,9 +154,9 @@ export function StudentDashboard({ user, onLogout }: { user: User; onLogout: () 
             {userLoans.length === 0 ? (
               <div className="py-6 text-center">
                 <div className="text-2xl text-ink-200">&#x1F4DA;</div>
-                <p className="mt-2 text-xs text-ink-500">No loan history yet.</p>
+                <p className="mt-2 text-xs text-ink-500">Aucun emprunt pour le moment.</p>
                 <Link to="/" className="mt-2 inline-block text-[10px] font-semibold text-brand-700 hover:text-brand-600">
-                  Browse the catalog
+                  Parcourir le catalogue
                 </Link>
               </div>
             ) : (
@@ -166,27 +166,27 @@ export function StudentDashboard({ user, onLogout }: { user: User; onLogout: () 
                   return (
                     <li key={l.id} className="rounded-lg border border-ink-100 bg-surface-50 p-3">
                       <div className="flex items-start gap-3">
-                        {book?.coverUrl
-                          ? <img src={book.coverUrl} alt="" className="h-14 w-10 shrink-0 rounded border border-ink-100 object-cover" />
-                          : <div className="flex h-14 w-10 shrink-0 items-center justify-center rounded border border-ink-100 bg-surface-100 text-[7px] text-ink-500">N/A</div>}
+                         {book?.couverture_url
+                            ? <img src={book.couverture_url} alt="" className="h-14 w-10 shrink-0 rounded border border-ink-100 object-cover" />
+                            : <div className="flex h-14 w-10 shrink-0 items-center justify-center rounded border border-ink-100 bg-surface-100 text-[7px] text-ink-500">N/D</div>}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
-                              <div className="truncate text-xs font-semibold text-ink-900">{l.bookTitle}</div>
+                               <div className="truncate text-xs font-semibold text-ink-900">{l.titre_livre}</div>
                               <div className="text-[10px] text-ink-500">ISBN: {l.isbn}</div>
                             </div>
                             <LoanStatusBadge status={l.statut as any} />
                           </div>
                           <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5 text-[10px] text-ink-500">
-                            <span>Loaned: {l.loanDate}</span>
-                            <span>Due: {l.returnDateExpected}</span>
-                          </div>
-                          {l.returnDateActual && (
-                            <div className="mt-0.5 text-[10px] text-emerald-600">Returned: {l.returnDateActual}</div>
-                          )}
+                             <span>Emprunte le: {l.date_emprunt}</span>
+                             <span>Retour prevu: {l.date_retour_prevue}</span>
+                           </div>
+                            {l.date_retour_reelle && (
+                             <div className="mt-0.5 text-[10px] text-emerald-600">Retourne le: {l.date_retour_reelle}</div>
+                            )}
                           {l.statut === "EN_RETARD" && (
                             <div className="mt-0.5 text-[10px] font-semibold text-rose-600">
-                              Overdue by {Math.ceil((new Date("2026-03-17").getTime() - new Date(l.date_retour_prevue).getTime()) / (1000 * 60 * 60 * 24))} day(s)
+                              En retard de {Math.ceil((new Date("2026-03-17").getTime() - new Date(l.date_retour_prevue).getTime()) / (1000 * 60 * 60 * 24))} jour(s)
                             </div>
                           )}
                         </div>
@@ -204,9 +204,9 @@ export function StudentDashboard({ user, onLogout }: { user: User; onLogout: () 
             {userReservations.length === 0 ? (
               <div className="py-6 text-center">
                 <div className="text-2xl text-ink-200">&#x1F4CB;</div>
-                <p className="mt-2 text-xs text-ink-500">No active reservations.</p>
+                <p className="mt-2 text-xs text-ink-500">Aucune reservation active.</p>
                 <Link to="/" className="mt-2 inline-block text-[10px] font-semibold text-brand-700 hover:text-brand-600">
-                  Browse the catalog
+                  Parcourir le catalogue
                 </Link>
               </div>
             ) : (
@@ -216,24 +216,24 @@ export function StudentDashboard({ user, onLogout }: { user: User; onLogout: () 
                   return (
                     <li key={r.id} className="rounded-lg border border-ink-100 bg-surface-50 p-3">
                       <div className="flex items-start gap-3">
-                        {book?.coverUrl
-                          ? <img src={book.coverUrl} alt="" className="h-14 w-10 shrink-0 rounded border border-ink-100 object-cover" />
-                          : <div className="flex h-14 w-10 shrink-0 items-center justify-center rounded border border-ink-100 bg-surface-100 text-[7px] text-ink-500">N/A</div>}
+                         {book?.couverture_url
+                            ? <img src={book.couverture_url} alt="" className="h-14 w-10 shrink-0 rounded border border-ink-100 object-cover" />
+                            : <div className="flex h-14 w-10 shrink-0 items-center justify-center rounded border border-ink-100 bg-surface-100 text-[7px] text-ink-500">N/D</div>}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
-                              <div className="truncate text-xs font-semibold text-ink-900">{r.bookTitle}</div>
+                               <div className="truncate text-xs font-semibold text-ink-900">{r.titre_livre}</div>
                               <div className="text-[10px] text-ink-500">ISBN: {r.isbn}</div>
                             </div>
                             <ReservationStatusBadge status={r.statut as any} />
                           </div>
                           <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-0.5 text-[10px] text-ink-500">
-                            <span>Reserved: {r.date_reservation}</span>
-                            <span>Queue: #{r.position_file}</span>
+                            <span>Reserve le: {r.date_reservation}</span>
+                            <span>File: #{r.position_file}</span>
                           </div>
                           {r.statut === "PRETE" && (
                             <div className="mt-1 text-[10px] font-semibold text-emerald-600">
-                              Ready for pickup at the library
+                              Pret a retirer a la bibliotheque
                             </div>
                           )}
                           {r.statut === "EN_ATTENTE" && (
@@ -241,7 +241,7 @@ export function StudentDashboard({ user, onLogout }: { user: User; onLogout: () 
                               onClick={() => cancelReservation(r.id)}
                               className="mt-2 rounded border border-rose-200 px-3 py-1 text-[10px] font-semibold text-rose-600 hover:bg-rose-50"
                             >
-                              Cancel Reservation
+                              Annuler la reservation
                             </button>
                           )}
                         </div>

@@ -4,7 +4,9 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 // Types
-export type UserRole = 'ETUDIANT' | 'ENSEIGNANT' | 'BIBLIOTHECAIRE' | 'ADMIN';
+export type UserRole = 'ETUDIANT' | 'ENSEIGNANT' | 'BIBLIOTHECAIRE' | 'ADMINISTRATEUR';
+export type StatutEmprunt = 'ACTIF' | 'RETOURNE' | 'EN_RETARD';
+export type StatutReservation = 'EN_ATTENTE' | 'PRETE' | 'ANNULEE';
 
 export interface User {
   id: string;
@@ -12,7 +14,7 @@ export interface User {
   prenom: string;
   email: string;
   role: UserRole;
-  name?: string; // Computed property for convenience
+  statut?: string;
 }
 
 export interface Book {
@@ -23,33 +25,20 @@ export interface Book {
   categorie: string;
   annee?: number;
   resume?: string;
-  description?: string;
-  status?: 'Available' | 'Borrowed';
-  coverUrl?: string;
-  location?: string;
-  disponible?: boolean;
-  // Convenience aliases for English
-  title?: string;
-  author?: string;
-  category?: string;
-  year?: number;
+  disponible: boolean;
+  localisation?: string | null;
+  couverture_url?: string | null;
 }
 
 export interface Loan {
   id: string;
   id_utilisateur: string;
   isbn: string;
-  titre_livre?: string; // Fallback if backend provides it
+  titre_livre?: string;
   date_emprunt: string;
   date_retour_prevue: string;
   date_retour_reelle?: string | null;
-  statut: 'ACTIF' | 'RETOURNE' | 'EN_RETARD';
-  // English aliases
-  bookTitle?: string;
-  loanDate?: string;
-  returnDateExpected?: string;
-  returnDateActual?: string | null;
-  status?: string;
+  statut: StatutEmprunt;
 }
 
 export interface Reservation {
@@ -58,13 +47,8 @@ export interface Reservation {
   isbn: string;
   titre_livre?: string;
   date_reservation: string;
-  statut: 'EN_ATTENTE' | 'PRETE' | 'ANNULEE';
+  statut: StatutReservation;
   position_file: number;
-  // English aliases
-  bookTitle?: string;
-  date?: string;
-  queuePosition?: number;
-  status?: string;
 }
 
 export interface Stats {
@@ -75,7 +59,7 @@ export interface Stats {
   overdueLoans?: number;
   pendingReservations?: number;
   totalUsers?: number;
-  [key: string]: any; // Allow additional stats fields
+  [key: string]: any;
 }
 
 // API Error Handler
@@ -126,86 +110,7 @@ async function fetchAPI<T>(
     }
 
     const data = await response.json();
-    
-    // Helper function to transform French field names to English
-    const transformData = (obj: any): any => {
-      if (!obj || typeof obj !== 'object') return obj;
-      
-      // Handle arrays
-      if (Array.isArray(obj)) {
-        return obj.map(item => transformData(item));
-      }
-      
-      // Handle objects
-      const transformed = { ...obj };
-      
-      // User field mappings
-      if (transformed.nom && !transformed.name) {
-        transformed.name = `${transformed.prenom || ''} ${transformed.nom}`.trim();
-      }
-      
-      // Book field mappings
-      if (transformed.titre && !transformed.title) {
-        transformed.title = transformed.titre;
-      }
-      if (transformed.auteur && !transformed.author) {
-        transformed.author = transformed.auteur;
-      }
-      if (transformed.categorie && !transformed.category) {
-        transformed.category = transformed.categorie;
-      }
-      
-      // Loan field mappings
-      if (transformed.titre_livre && !transformed.bookTitle) {
-        transformed.bookTitle = transformed.titre_livre;
-      }
-      if (transformed.date_emprunt && !transformed.loanDate) {
-        transformed.loanDate = transformed.date_emprunt;
-      }
-      if (transformed.date_retour_prevue && !transformed.returnDateExpected) {
-        transformed.returnDateExpected = transformed.date_retour_prevue;
-      }
-      if (transformed.date_retour_reelle && !transformed.returnDateActual) {
-        transformed.returnDateActual = transformed.date_retour_reelle;
-      }
-      
-      // Status mappings (French to English)
-      if (transformed.statut) {
-        const statusMap: { [key: string]: string } = {
-          'ACTIF': 'Active',
-          'RETOURNE': 'Returned',
-          'EN_RETARD': 'Overdue',
-          'EN_ATTENTE': 'Pending',
-          'PRETE': 'Ready',
-          'ANNULEE': 'Cancelled'
-        };
-        if (!transformed.status && statusMap[transformed.statut]) {
-          transformed.status = statusMap[transformed.statut];
-        }
-      }
-      
-      // Book status mapping
-      if (transformed.disponible === false && !transformed.status) {
-        transformed.status = 'Borrowed';
-      } else if (transformed.disponible === true && !transformed.status) {
-        transformed.status = 'Available';
-      }
-      
-      // Reservation field mappings
-      if (transformed.titre_livre && !transformed.bookTitle) {
-        transformed.bookTitle = transformed.titre_livre;
-      }
-      if (transformed.date_reservation && !transformed.date) {
-        transformed.date = transformed.date_reservation;
-      }
-      if (transformed.position_file && !transformed.queuePosition) {
-        transformed.queuePosition = transformed.position_file;
-      }
-      
-      return transformed;
-    };
-    
-    return transformData(data);
+    return data;
   } catch (error) {
     if (error instanceof APIError) throw error;
     const message = error instanceof Error ? error.message : 'Network error';
@@ -269,12 +174,7 @@ export const auth = {
   getStoredUser(): User | null {
     const userStr = localStorage.getItem('user');
     if (!userStr) return null;
-    const user = JSON.parse(userStr);
-    // Ensure name property exists
-    if (!user.name && (user.nom || user.prenom)) {
-      user.name = `${user.prenom || ''} ${user.nom || ''}`.trim();
-    }
-    return user;
+    return JSON.parse(userStr);
   },
 
   getToken(): string | null {
@@ -315,13 +215,13 @@ export const books = {
   },
 
   async create(data: {
-    title: string;
-    author: string;
+    titre: string;
+    auteur: string;
     isbn: string;
-    year: number;
-    category: string;
-    location: string;
-    description: string;
+    annee: number;
+    categorie: string;
+    localisation: string;
+    resume: string;
   }): Promise<Book> {
     return fetchAPI<Book>('/books', {
       method: 'POST',
@@ -332,9 +232,9 @@ export const books = {
   async update(
     isbn: string,
     data: {
-      status?: string;
-      location?: string;
-      category?: string;
+      disponible?: boolean;
+      localisation?: string;
+      categorie?: string;
     }
   ): Promise<Book> {
     return fetchAPI<Book>(`/books/${isbn}`, {
@@ -354,12 +254,12 @@ export const books = {
 
 export const loans = {
   async getAll(filters?: {
-    studentId?: string;
-    status?: string;
+    id_utilisateur?: string;
+    statut?: string;
   }): Promise<Loan[]> {
     const params = new URLSearchParams();
-    if (filters?.studentId) params.append('studentId', filters.studentId);
-    if (filters?.status) params.append('status', filters.status);
+    if (filters?.id_utilisateur) params.append('id_utilisateur', filters.id_utilisateur);
+    if (filters?.statut) params.append('statut', filters.statut);
 
     return fetchAPI<Loan[]>(
       `/loans${params.toString() ? '?' + params.toString() : ''}`
@@ -367,9 +267,9 @@ export const loans = {
   },
 
   async create(data: {
-    studentId: string;
+    id_utilisateur: string;
     isbn: string;
-    returnDateExpected: string;
+    date_retour_prevue: string;
   }): Promise<Loan> {
     return fetchAPI<Loan>('/loans', {
       method: 'POST',
@@ -377,10 +277,10 @@ export const loans = {
     });
   },
 
-  async return(loanId: string, returnDateActual: string): Promise<Loan> {
+  async return(loanId: string, date_retour_reelle: string): Promise<Loan> {
     return fetchAPI<Loan>(`/loans/${loanId}/return`, {
       method: 'PUT',
-      body: JSON.stringify({ returnDateActual }),
+      body: JSON.stringify({ date_retour_reelle }),
     });
   },
 };
@@ -391,12 +291,12 @@ export const loans = {
 
 export const reservations = {
   async getAll(filters?: {
-    studentId?: string;
-    status?: string;
+    id_utilisateur?: string;
+    statut?: string;
   }): Promise<Reservation[]> {
     const params = new URLSearchParams();
-    if (filters?.studentId) params.append('studentId', filters.studentId);
-    if (filters?.status) params.append('status', filters.status);
+    if (filters?.id_utilisateur) params.append('id_utilisateur', filters.id_utilisateur);
+    if (filters?.statut) params.append('statut', filters.statut);
 
     return fetchAPI<Reservation[]>(
       `/reservations${params.toString() ? '?' + params.toString() : ''}`
@@ -404,7 +304,7 @@ export const reservations = {
   },
 
   async create(data: {
-    studentId: string;
+    id_utilisateur?: string;
     isbn: string;
   }): Promise<Reservation> {
     return fetchAPI<Reservation>('/reservations', {
@@ -415,11 +315,11 @@ export const reservations = {
 
   async update(
     id: string,
-    status: 'Pending' | 'Ready' | 'Cancelled'
+    statut: StatutReservation
   ): Promise<Reservation> {
     return fetchAPI<Reservation>(`/reservations/${id}`, {
       method: 'PUT',
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ statut }),
     });
   },
 
@@ -442,9 +342,11 @@ export const users = {
   },
 
   async create(data: {
-    name: string;
+    nom: string;
+    prenom: string;
     email: string;
     role: UserRole;
+    password?: string;
   }): Promise<User> {
     return fetchAPI<User>('/users', {
       method: 'POST',
@@ -455,7 +357,8 @@ export const users = {
   async update(
     id: string,
     data: {
-      name?: string;
+      nom?: string;
+      prenom?: string;
       email?: string;
       role?: UserRole;
     }
@@ -478,6 +381,32 @@ export const users = {
 export const stats = {
   async get(): Promise<Stats> {
     return fetchAPI<Stats>('/stats');
+  },
+};
+
+// ============================================
+// AI / FAQ ENDPOINTS
+// ============================================
+
+export interface FaqEntry {
+  id: string;
+  question: string;
+  answer: string;
+  categorie: string;
+  ordre: number;
+}
+
+export const ai = {
+  async getFaq(): Promise<FaqEntry[]> {
+    const data = await fetchAPI<{ data: FaqEntry[] }>('/ai/faq');
+    return data.data ?? [];
+  },
+
+  async query(question: string, userId?: string): Promise<{ answer: string; source?: string }> {
+    return fetchAPI('/ai/query', {
+      method: 'POST',
+      body: JSON.stringify({ question, userId }),
+    });
   },
 };
 

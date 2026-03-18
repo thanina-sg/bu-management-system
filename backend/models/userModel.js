@@ -6,6 +6,30 @@ const hashPassword = (password) => {
   return crypto.createHash('sha256').update(password).digest('hex');
 };
 
+const toFrenchRole = (role) => {
+  const roleMap = {
+    ETUDIANT: 'ETUDIANT',
+    ENSEIGNANT: 'ENSEIGNANT',
+    BIBLIOTHECAIRE: 'BIBLIOTHECAIRE',
+    ADMIN: 'ADMINISTRATEUR',
+    ADMINISTRATEUR: 'ADMINISTRATEUR',
+    Student: 'ETUDIANT',
+    Teacher: 'ENSEIGNANT',
+    Librarian: 'BIBLIOTHECAIRE',
+    Admin: 'ADMINISTRATEUR',
+  };
+  return roleMap[role] || 'ETUDIANT';
+};
+
+const toUserDto = (user) => ({
+  id: user.id,
+  nom: user.nom,
+  prenom: user.prenom,
+  email: user.email,
+  role: user.role,
+  statut: user.statut,
+});
+
 // --- GET ALL USERS (Admin only) ---
 const getAllUsers = async () => {
   const { data, error } = await supabase
@@ -15,14 +39,7 @@ const getAllUsers = async () => {
 
   if (error) throw error;
 
-  return data.map(user => ({
-    id: user.id,
-    name: `${user.prenom} ${user.nom}`,
-    email: user.email,
-    role: user.role === 'ETUDIANT' ? 'Student' : 
-          user.role === 'ENSEIGNANT' ? 'Teacher' :
-          user.role === 'BIBLIOTHECAIRE' ? 'Librarian' : 'Admin'
-  }));
+  return data.map(toUserDto);
 };
 
 // --- GET CURRENT USER ---
@@ -35,36 +52,18 @@ const getCurrentUser = async (userId) => {
 
   if (error || !user) throw new Error("Utilisateur non trouvé");
 
-  return {
-    id: user.id,
-    name: `${user.prenom} ${user.nom}`,
-    email: user.email,
-    role: user.role === 'ETUDIANT' ? 'Student' : 
-          user.role === 'ENSEIGNANT' ? 'Teacher' :
-          user.role === 'BIBLIOTHECAIRE' ? 'Librarian' : 'Admin'
-  };
+  return toUserDto(user);
 };
 
 // --- CREATE USER (Admin only) ---
 const createUser = async (userData) => {
-  const { name, email, role, password } = userData;
-  const [prenom, ...nomParts] = name.split(' ');
-  const nom = nomParts.join(' ') || 'User';
+  const { nom, prenom, email, role, password } = userData;
 
-  const roleMap = {
-    'Student': 'ETUDIANT',
-    'Teacher': 'ENSEIGNANT',
-    'Librarian': 'BIBLIOTHECAIRE',
-    'Admin': 'ADMINISTRATEUR'
-  };
+  const defaultPassword = `${prenom.toLowerCase()}.${nom.toLowerCase().replace(/\s+/g, '')}123`;
+  const effectivePassword = password || defaultPassword;
+  const passwordHash = hashPassword(effectivePassword);
 
-  // Password is required
-  if (!password) {
-    throw new Error('Password is required when creating a user');
-  }
-  const passwordHash = hashPassword(password);
-
-  const mappedRole = roleMap[role] || 'ETUDIANT';
+  const mappedRole = toFrenchRole(role);
 
   const { data: user, error } = await supabase
     .from('utilisateur')
@@ -80,33 +79,19 @@ const createUser = async (userData) => {
 
   if (error) throw error;
 
-  return {
-    id: user[0].id,
-    name,
-    email: user[0].email,
-    role: user[0].role
-  };
+  return toUserDto(user[0]);
 };
 
 // --- UPDATE USER (Admin only) ---
 const updateUser = async (userId, updates) => {
-  const { name, email, role } = updates;
+  const { nom, prenom, email, role } = updates;
 
   let updateData = {};
-  if (name) {
-    const [prenom, ...nomParts] = name.split(' ');
-    updateData.prenom = prenom;
-    updateData.nom = nomParts.join(' ') || 'User';
-  }
+  if (nom !== undefined) updateData.nom = nom;
+  if (prenom !== undefined) updateData.prenom = prenom;
   if (email) updateData.email = email;
   if (role) {
-    const roleMap = {
-      'Student': 'ETUDIANT',
-      'Teacher': 'ENSEIGNANT',
-      'Librarian': 'BIBLIOTHECAIRE',
-      'Admin': 'ADMINISTRATEUR'
-    };
-    updateData.role = roleMap[role] || 'ETUDIANT';
+    updateData.role = toFrenchRole(role);
   }
 
   const { data: updated, error } = await supabase
@@ -117,14 +102,7 @@ const updateUser = async (userId, updates) => {
 
   if (error) throw error;
 
-  return {
-    id: updated[0].id,
-    name: `${updated[0].prenom} ${updated[0].nom}`,
-    email: updated[0].email,
-    role: updated[0].role === 'ETUDIANT' ? 'Student' : 
-          updated[0].role === 'ENSEIGNANT' ? 'Teacher' :
-          updated[0].role === 'BIBLIOTHECAIRE' ? 'Librarian' : 'Admin'
-  };
+  return toUserDto(updated[0]);
 };
 
 // --- DELETE USER (Admin only) ---

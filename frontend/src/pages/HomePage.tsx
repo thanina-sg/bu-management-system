@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { books as booksAPI, type Book } from "../lib/api";
 import { applyFilters, type Filters } from "../lib/filter";
 
-const STATUSES = ["All Status", "Available", "Borrowed"];
+const STATUSES = ["Tous", "Disponible", "Emprunte"];
 
 export function HomePage() {
   const [allBooks, setAllBooks] = useState<Book[]>([]);
@@ -12,8 +12,8 @@ export function HomePage() {
   
   const [filters, setFilters] = useState<Filters>({
     q: "",
-    category: "All Categories",
-    status: "All Status",
+    category: "Toutes categories",
+    status: "Tous",
   });
 
   // Fetch books on mount
@@ -25,7 +25,7 @@ export function HomePage() {
         const data = await booksAPI.getAll();
         setAllBooks(data);
       } catch (err) {
-        setError("Failed to load books. Please try again.");
+        setError("Impossible de charger les livres. Veuillez reessayer.");
         console.error(err);
       } finally {
         setIsLoading(false);
@@ -38,9 +38,9 @@ export function HomePage() {
   // Compute unique categories from books
   const categories = useMemo(() => {
     const cats = new Set<string>();
-    cats.add("All Categories");
+    cats.add("Toutes categories");
     allBooks.forEach((book) => {
-      const cat = book.category || book.categorie;
+      const cat = book.categorie;
       if (cat) cats.add(cat);
     });
     return Array.from(cats).sort();
@@ -51,16 +51,16 @@ export function HomePage() {
   return (
     <div className="mx-auto max-w-6xl px-6 py-10">
       <div className="mx-auto max-w-3xl text-center">
-        <h1 className="font-serif text-5xl tracking-tight text-ink-900">Academic Resource Catalog</h1>
+        <h1 className="font-serif text-5xl tracking-tight text-ink-900">Catalogue des ressources academiques</h1>
         <p className="mx-auto mt-4 max-w-2xl text-base text-ink-500">
-          Search thousands of books, journals, and academic papers in the university&apos;s digital and physical collections.
+          Recherchez des milliers de livres, journaux et ressources académiques dans les collections numeriques et physiques de l&apos;universite.
         </p>
 
         <div className="mt-6">
           <input
             value={filters.q}
             onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value }))}
-            placeholder="Search by title, author, or ISBN..."
+            placeholder="Rechercher par titre, auteur ou ISBN..."
             className="w-full rounded-lg border border-ink-100 bg-white px-4 py-3 text-sm text-ink-900 shadow-soft outline-none placeholder:text-ink-200 focus:border-brand-500"
           />
         </div>
@@ -68,7 +68,7 @@ export function HomePage() {
 
       <div className="mt-8 rounded-lg border border-ink-100 bg-white p-3 shadow-soft">
         <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="text-xs font-semibold text-ink-500">▽ Refine Results</div>
+          <div className="text-xs font-semibold text-ink-500">▽ Affiner les resultats</div>
 
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             <div>
@@ -109,7 +109,7 @@ export function HomePage() {
       <section className="mt-6">
         {isLoading && (
           <div className="py-12 text-center">
-            <div className="text-[10px] text-ink-500">Loading books...</div>
+            <div className="text-[10px] text-ink-500">Chargement des livres...</div>
           </div>
         )}
 
@@ -122,8 +122,8 @@ export function HomePage() {
         {!isLoading && !error && (
           <>
             <div className="mb-4 text-xs text-ink-500">
-              Showing <span className="font-semibold text-ink-700">{filtered.length}</span> results
-            </div>
+               <span className="font-semibold text-ink-700">{filtered.length}</span> resultat(s)
+             </div>
 
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {filtered.map((b) => (
@@ -131,18 +131,18 @@ export function HomePage() {
                   <div className="relative">
                     <div
                       className={
-                        b.status === "Available"
+                        b.disponible
                           ? "absolute right-1 top-1 rounded bg-emerald-100 px-2 py-1 text-[10px] font-semibold text-emerald-700"
                           : "absolute right-1 top-1 rounded bg-rose-100 px-2 py-1 text-[10px] font-semibold text-rose-700"
                       }
                     >
-                      {b.status}
+                      {b.disponible ? 'Disponible' : 'Emprunte'}
                     </div>
 
-                    {b.coverUrl ? (
+                    {b.couverture_url ? (
                       <img
-                        src={b.coverUrl}
-                        alt={b.title}
+                        src={b.couverture_url}
+                        alt={b.titre}
                         className="h-72 w-full rounded border border-ink-100 object-cover"
                       />
                     ) : (
@@ -152,18 +152,18 @@ export function HomePage() {
                     )}
                   </div>
 
-                  <div className="mt-4 text-[10px] font-semibold uppercase tracking-wide text-ink-500">
-                    {b.category}
-                  </div>
-                  <h3 className="mt-1 line-clamp-2 font-serif text-2xl leading-tight text-ink-900">{b.title}</h3>
-                  <p className="mt-1 text-sm text-ink-500">{b.author}</p>
+                   <div className="mt-4 text-[10px] font-semibold uppercase tracking-wide text-ink-500">
+                     {b.categorie}
+                   </div>
+                   <h3 className="mt-1 line-clamp-2 font-serif text-2xl leading-tight text-ink-900">{b.titre}</h3>
+                   <p className="mt-1 text-sm text-ink-500">{b.auteur}</p>
 
                   <div className="mt-4">
                     <Link
                       to={`/book/${b.id}`}
                       className="inline-flex w-full items-center justify-center rounded bg-brand-700 px-4 py-2 text-xs font-semibold text-white hover:bg-brand-600"
                     >
-                      View Details
+                      Voir details
                     </Link>
                   </div>
                 </article>
@@ -173,7 +173,7 @@ export function HomePage() {
             {filtered.length === 0 && (
               <div className="py-12 text-center">
                 <div className="text-2xl text-ink-200">&#x1F50D;</div>
-                <p className="mt-2 text-sm text-ink-500">No books found matching your search.</p>
+                 <p className="mt-2 text-sm text-ink-500">Aucun livre ne correspond a votre recherche.</p>
               </div>
             )}
           </>

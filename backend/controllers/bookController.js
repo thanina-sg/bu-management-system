@@ -4,8 +4,8 @@ const getAllBooks = async (req, res) => {
     try {
         const filters = {
             search: req.query.q || req.query.search,
-            category: req.query.category,
-            status: req.query.status
+            category: req.query.categorie || req.query.category,
+            disponible: req.query.disponible,
         };
 
         const books = await getBooks(filters);

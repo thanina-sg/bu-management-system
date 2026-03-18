@@ -11,16 +11,16 @@ import { books as booksAPI, loans as loansAPI, reservations as reservationsAPI, 
 import type { LoggedInRole, PortalView } from "../components/librarian/types";
 
 const LIBRARIAN_TABS: { key: PortalView; label: string }[] = [
-  { key: "loan", label: "New Loan" },
-  { key: "return", label: "Return" },
+  { key: "loan", label: "Nouvel emprunt" },
+  { key: "return", label: "Retour" },
   { key: "reservations", label: "Reservations" },
-  { key: "books", label: "Books" },
+  { key: "books", label: "Livres" },
 ];
 
 const ADMIN_TABS: { key: PortalView; label: string }[] = [
-  { key: "users", label: "Users" },
-  { key: "librarians", label: "Librarians" },
-  { key: "books", label: "Books" },
+  { key: "users", label: "Utilisateurs" },
+  { key: "librarians", label: "Bibliothecaires" },
+  { key: "books", label: "Livres" },
   { key: "reservations", label: "Reservations" },
 ];
 
@@ -93,13 +93,13 @@ export function LibrarianPage() {
   const tabs = loggedInRole === "Admin" ? ADMIN_TABS : LIBRARIAN_TABS;
 
   const subtitles: Record<Exclude<PortalView, "login">, string> = {
-    loan: "Register a new resource loan",
-    return: "Register a resource return",
-    reservations: "View and manage all reservations",
-    books: loggedInRole === "Admin" ? "Manage library book catalog" : "View and manage book catalog",
-    users: "Manage students and teachers",
-    students: "Manage students and teachers",
-    librarians: "Manage library staff",
+    loan: "Enregistrer un nouvel emprunt",
+    return: "Enregistrer un retour",
+    reservations: "Voir et gerer toutes les reservations",
+    books: loggedInRole === "Admin" ? "Gerer le catalogue de livres" : "Consulter et gerer le catalogue",
+    users: "Gerer les etudiants et enseignants",
+    students: "Gerer les etudiants et enseignants",
+    librarians: "Gerer le personnel de bibliotheque",
   };
 
   return (
@@ -109,7 +109,7 @@ export function LibrarianPage() {
           ⎘
         </div>
         <h1 className="mt-4 font-serif text-4xl tracking-tight text-ink-900 md:text-6xl">
-          {loggedInRole === "Admin" ? "Admin Portal" : "Librarian Portal"}
+          {loggedInRole === "Admin" ? "Portail administrateur" : "Portail bibliothecaire"}
         </h1>
         <div className="mt-2 flex items-center justify-center gap-2">
           <RoleBadge role={loggedInRole} />
@@ -159,7 +159,7 @@ export function LibrarianPage() {
           }}
           className="text-xs font-semibold text-ink-500 hover:text-ink-700"
         >
-          Sign Out
+          Se deconnecter
         </button>
       </div>
     </div>

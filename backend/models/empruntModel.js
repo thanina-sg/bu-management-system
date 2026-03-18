@@ -24,11 +24,11 @@ const getLoans = async (filters = {}) => {
     // Determine status based on return dates
     let loanStatus;
     if (loan.date_retour_reelle) {
-      loanStatus = 'Returned';
+      loanStatus = 'RETOURNE';
     } else if (loan.date_retour_prevue < today) {
-      loanStatus = 'Overdue';
+      loanStatus = 'EN_RETARD';
     } else {
-      loanStatus = 'Active';
+      loanStatus = 'ACTIF';
     }
 
     // Filter by status if requested
@@ -50,13 +50,13 @@ const getLoans = async (filters = {}) => {
 
     return {
       id: loan.id,
-      studentId: loan.id_utilisateur,
+      id_utilisateur: loan.id_utilisateur,
       isbn: book?.isbn,
-      bookTitle: bookDetail?.titre,
-      loanDate: loan.date_emprunt,
-      returnDateExpected: loan.date_retour_prevue,
-      returnDateActual: loan.date_retour_reelle,
-      status: loanStatus
+      titre_livre: bookDetail?.titre,
+      date_emprunt: loan.date_emprunt,
+      date_retour_prevue: loan.date_retour_prevue,
+      date_retour_reelle: loan.date_retour_reelle,
+      statut: loanStatus,
     };
   }));
 
@@ -71,7 +71,8 @@ const createLoan = async (studentId, isbn, returnDate) => {
     .select('id_exemplaire')
     .eq('isbn', isbn)
     .eq('disponibilite', true)
-    .single();
+    .limit(1)
+    .maybeSingle();
 
   if (exError || !exemplaire) throw new Error("Aucun exemplaire disponible");
 
@@ -102,13 +103,13 @@ const createLoan = async (studentId, isbn, returnDate) => {
 
   return {
     id: loan[0].id,
-    studentId: loan[0].id_utilisateur,
+    id_utilisateur: loan[0].id_utilisateur,
     isbn,
-    bookTitle: bookDetail?.titre,
-    loanDate: loan[0].date_emprunt,
-    returnDateExpected: loan[0].date_retour_prevue,
-    returnDateActual: null,
-    status: 'Active'
+    titre_livre: bookDetail?.titre,
+    date_emprunt: loan[0].date_emprunt,
+    date_retour_prevue: loan[0].date_retour_prevue,
+    date_retour_reelle: null,
+    statut: 'ACTIF',
   };
 };
 
@@ -133,6 +134,8 @@ const returnLoan = async (loanId, returnDate) => {
 
   if (updateError) throw updateError;
 
+  const dateRetourPrevue = updated[0]?.date_retour_prevue || loan.date_retour_prevue;
+
   // Mark exemplaire as available
   await supabase
     .from('exemplaire')
@@ -140,10 +143,10 @@ const returnLoan = async (loanId, returnDate) => {
     .eq('id_exemplaire', loan.id_exemplaire);
 
   // Check for overdue and create penalty if needed
-  const isOverdue = new Date(returnDate) > new Date(loan.date_retour_prevue);
+  const isOverdue = new Date(returnDate) > new Date(dateRetourPrevue);
   if (isOverdue) {
     const daysOverdue = Math.ceil(
-      (new Date(returnDate) - new Date(loan.date_retour_prevue)) / (1000 * 60 * 60 * 24)
+      (new Date(returnDate) - new Date(dateRetourPrevue)) / (1000 * 60 * 60 * 24)
     );
     
     await supabase.from('penalite').insert([{
@@ -154,10 +157,27 @@ const returnLoan = async (loanId, returnDate) => {
     }]);
   }
 
+  const { data: exemplaire } = await supabase
+    .from('exemplaire')
+    .select('isbn')
+    .eq('id_exemplaire', loan.id_exemplaire)
+    .single();
+
+  const { data: livre } = await supabase
+    .from('livre')
+    .select('titre')
+    .eq('isbn', exemplaire?.isbn)
+    .single();
+
   return {
     id: updated[0].id,
-    status: 'Returned',
-    isLate: isOverdue
+    id_utilisateur: loan.id_utilisateur,
+    isbn: exemplaire?.isbn,
+    titre_livre: livre?.titre,
+    date_emprunt: updated[0].date_emprunt,
+    date_retour_prevue: dateRetourPrevue,
+    date_retour_reelle: updated[0].date_retour_reelle,
+    statut: isOverdue ? 'EN_RETARD' : 'RETOURNE',
   };
 };
 

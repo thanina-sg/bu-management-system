@@ -21,7 +21,7 @@ export function FormResultBanner({ result }: { result: FormResult }) {
         {Object.entries(result.details).map(([key, value]) => (
           <div key={key} className="flex gap-2 text-xs">
             <span className="w-28 shrink-0 font-medium text-ink-500">{key}:</span>
-            <span className={key === "Late" ? "font-semibold text-rose-700" : "text-ink-900"}>{value}</span>
+            <span className={key === "Retard" ? "font-semibold text-rose-700" : "text-ink-900"}>{value}</span>
           </div>
         ))}
       </div>

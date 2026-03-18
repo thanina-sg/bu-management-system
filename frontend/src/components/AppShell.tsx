@@ -3,6 +3,7 @@ import { Link, Outlet } from "react-router-dom";
 import { TopNavLink } from "./TopNavLink";
 import { SearchOverlay } from "./SearchOverlay";
 import { AccountPanel } from "./AccountPanel";
+import { ChatWidget } from "./ChatWidget";
 
 export function AppShell() {
   const [showSearch, setShowSearch] = useState(false);
@@ -16,18 +17,18 @@ export function AppShell() {
             <span className="inline-flex h-4 w-4 items-center justify-center rounded border border-brand-600 text-[8px] text-brand-700">
               ▦
             </span>
-            University Library
+            Bibliotheque universitaire
           </Link>
 
           <nav className="hidden items-center gap-6 sm:flex">
-            <TopNavLink to="/">Catalog</TopNavLink>
-            <TopNavLink to="/librarian">Staff Portal</TopNavLink>
+            <TopNavLink to="/">Catalogue</TopNavLink>
+            <TopNavLink to="/librarian">Portail personnel</TopNavLink>
           </nav>
 
           <div className="flex items-center gap-3 text-ink-500">
             <button
               type="button"
-              aria-label="Search"
+              aria-label="Recherche"
               onClick={() => setShowSearch(true)}
               className="inline-flex h-6 w-6 items-center justify-center rounded-full text-[11px] hover:bg-surface-100"
             >
@@ -36,7 +37,7 @@ export function AppShell() {
             <div className="h-5 w-px bg-ink-100" />
             <button
               type="button"
-              aria-label="Account"
+              aria-label="Compte"
               onClick={() => setShowAccount(true)}
               className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-surface-100 text-[11px] hover:bg-surface-200"
             >
@@ -52,6 +53,7 @@ export function AppShell() {
 
       {showSearch && <SearchOverlay onClose={() => setShowSearch(false)} />}
       {showAccount && <AccountPanel onClose={() => setShowAccount(false)} />}
+      <ChatWidget />
     </div>
   );
 }

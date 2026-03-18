@@ -28,7 +28,7 @@ export function AccountPanel({ onClose }: { onClose: () => void }) {
       >
         {isCheckingAuth ? (
           <div className="px-5 py-8 text-center">
-            <div className="text-[10px] text-ink-500">Checking authentication...</div>
+            <div className="text-[10px] text-ink-500">Verification de la session...</div>
           </div>
         ) : loggedInUser ? (
           <StudentDashboard
@@ -41,7 +41,7 @@ export function AccountPanel({ onClose }: { onClose: () => void }) {
 
         <div className="border-t border-ink-100 px-5 py-3">
           <button onClick={onClose} className="text-xs font-semibold text-ink-500 hover:text-ink-700">
-            Close
+            Fermer
           </button>
         </div>
       </div>

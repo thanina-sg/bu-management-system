@@ -77,8 +77,11 @@ const getAdminUsers = async () => {
   }));
 };
 
+const PRIMARY_KEYS = { livre: 'isbn' };
+
 const countRows = async (table, applyFilter) => {
-  let query = supabase.from(table).select('id', { count: 'exact', head: true });
+  const pk = PRIMARY_KEYS[table] ?? 'id';
+  let query = supabase.from(table).select(pk, { count: 'exact', head: true });
   if (applyFilter) {
     query = applyFilter(query);
   }

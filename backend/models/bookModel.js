@@ -1,8 +1,21 @@
 const supabase = require('../db');
 
+const toBookDto = (book, availableCount = 0) => ({
+  id: book.isbn,
+  isbn: book.isbn,
+  titre: book.titre,
+  auteur: book.auteur,
+  categorie: book.categorie,
+  annee: book.annee,
+  resume: book.resume,
+  disponible: (availableCount || 0) > 0,
+  localisation: book.localisation || null,
+  couverture_url: null,
+});
+
 // --- GET BOOKS (with filtering) ---
 const getBooks = async (filters = {}) => {
-  const { search, category, status } = filters;
+  const { search, category, disponible } = filters;
   
   let query = supabase.from('livre').select(`
     isbn,
@@ -31,20 +44,15 @@ const getBooks = async (filters = {}) => {
       .eq('isbn', book.isbn)
       .eq('disponibilite', true);
 
-    return {
-      id: book.isbn,
-      title: book.titre,
-      author: book.auteur,
-      category: book.categorie,
-      year: book.annee,
-      description: book.resume,
-      isbn: book.isbn,
-      status: (count || 0) > 0 ? 'Available' : 'Borrowed',
-      coverUrl: null
-    };
+    return toBookDto(book, count);
   }));
 
-  return booksWithStatus;
+  if (disponible === undefined) {
+    return booksWithStatus;
+  }
+
+  const wanted = String(disponible) === 'true';
+  return booksWithStatus.filter((book) => book.disponible === wanted);
 };
 
 // --- GET SINGLE BOOK ---
@@ -63,17 +71,7 @@ const getBookById = async (isbn) => {
     .eq('isbn', isbn)
     .eq('disponibilite', true);
 
-  return {
-    id: book.isbn,
-    title: book.titre,
-    author: book.auteur,
-    category: book.categorie,
-    year: book.annee,
-    description: book.resume,
-    isbn: book.isbn,
-    status: (count || 0) > 0 ? 'Available' : 'Borrowed',
-    coverUrl: null
-  };
+  return toBookDto(book, count);
 };
 
 // --- GET BOOK RECOMMENDATIONS ---
@@ -101,16 +99,14 @@ const getRecommendations = async (isbn) => {
         .eq('isbn', item.isbn_cible)
         .eq('disponibilite', true);
 
-      return {
-        id: item.isbn_cible,
-        title: book?.titre,
-        author: book?.auteur,
-        category: book?.categorie,
-        year: book?.annee,
-        description: book?.resume,
+      return toBookDto({
         isbn: item.isbn_cible,
-        status: (count || 0) > 0 ? 'Available' : 'Borrowed'
-      };
+        titre: book?.titre,
+        auteur: book?.auteur,
+        categorie: book?.categorie,
+        annee: book?.annee,
+        resume: book?.resume,
+      }, count);
     })
   );
 
@@ -119,17 +115,25 @@ const getRecommendations = async (isbn) => {
 
 // --- ADD BOOK ---
 const addBook = async (bookData) => {
-  const { title, author, isbn, year, category, location, description } = bookData;
+  const {
+    titre,
+    auteur,
+    isbn,
+    annee,
+    categorie,
+    localisation,
+    resume,
+  } = bookData;
 
   const { data, error } = await supabase
     .from('livre')
     .insert([{
       isbn,
-      titre: title,
-      auteur: author,
-      annee: year,
-      categorie: category,
-      resume: description
+      titre,
+      auteur,
+      annee,
+      categorie,
+      resume,
     }])
     .select();
 
@@ -140,22 +144,22 @@ const addBook = async (bookData) => {
     .from('exemplaire')
     .insert([{
       isbn,
-      localisation: location,
+      localisation,
       disponibilite: true
     }])
     .select();
 
   if (exError) throw exError;
 
-  return data[0];
+  return toBookDto(data[0], 1);
 };
 
 // --- UPDATE BOOK ---
 const updateBook = async (isbn, updates) => {
-  const { status, location, category } = updates;
+  const { disponible, localisation, categorie } = updates;
 
   let updateData = {};
-  if (category) updateData.categorie = category;
+  if (categorie !== undefined) updateData.categorie = categorie;
 
   if (Object.keys(updateData).length > 0) {
     const { error } = await supabase
@@ -166,11 +170,10 @@ const updateBook = async (isbn, updates) => {
     if (error) throw error;
   }
 
-  if (location || status) {
+  if (localisation !== undefined || disponible !== undefined) {
     const exemplareUpdate = {};
-    if (location) exemplareUpdate.localisation = location;
-    if (status === 'Borrowed') exemplareUpdate.disponibilite = false;
-    if (status === 'Available') exemplareUpdate.disponibilite = true;
+    if (localisation !== undefined) exemplareUpdate.localisation = localisation;
+    if (disponible !== undefined) exemplareUpdate.disponibilite = !!disponible;
 
     const { error } = await supabase
       .from('exemplaire')

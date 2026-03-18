@@ -2,10 +2,20 @@ const { getLoans, createLoan, returnLoan } = require('../models/empruntModel');
 
 const getAllLoans = async (req, res) => {
     try {
+        const currentRole = req.user?.role;
+        const currentUserId = req.user?.id;
+
         const filters = {
-            studentId: req.query.studentId,
-            status: req.query.status
+            studentId: req.query.id_utilisateur,
+            status: req.query.statut,
         };
+
+        if (
+            currentRole !== 'BIBLIOTHECAIRE' &&
+            currentRole !== 'ADMINISTRATEUR'
+        ) {
+            filters.studentId = currentUserId;
+        }
 
         const loans = await getLoans(filters);
         res.json(loans);
@@ -17,9 +27,9 @@ const getAllLoans = async (req, res) => {
 
 const createNewLoan = async (req, res) => {
     try {
-        const { studentId, isbn, loanDate, returnDateExpected } = req.body;
+        const { id_utilisateur, isbn, date_retour_prevue } = req.body;
 
-        const loan = await createLoan(studentId, isbn, returnDateExpected);
+        const loan = await createLoan(id_utilisateur, isbn, date_retour_prevue);
         res.status(201).json(loan);
 
     } catch (err) {
@@ -29,9 +39,9 @@ const createNewLoan = async (req, res) => {
 
 const returnBookLoan = async (req, res) => {
     try {
-        const { returnDateActual } = req.body;
+        const { date_retour_reelle } = req.body;
 
-        const result = await returnLoan(req.params.id, returnDateActual);
+        const result = await returnLoan(req.params.id, date_retour_reelle);
         res.json(result);
 
     } catch (err) {

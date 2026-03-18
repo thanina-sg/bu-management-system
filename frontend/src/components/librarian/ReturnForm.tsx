@@ -21,7 +21,7 @@ export function ReturnForm() {
         const users = await usersAPI.getAll();
         setAllUsers(users);
       } catch (err) {
-        console.error("Failed to fetch users:", err);
+        console.error("Impossible de charger les utilisateurs:", err);
       }
     };
     fetchUsers();
@@ -51,14 +51,14 @@ export function ReturnForm() {
 
     try {
       if (!selectedUserId.trim() || !isbn.trim()) {
-        setResult({ type: "error", message: "Please select a student/user and enter an ISBN." });
+        setResult({ type: "error", message: "Veuillez selectionner un usager et saisir un ISBN." });
         return;
       }
 
       // Get selected student
       const student = allUsers.find(u => u.id === selectedUserId);
       if (!student) {
-        setResult({ type: "error", message: "Student not found." });
+        setResult({ type: "error", message: "Usager introuvable." });
         return;
       }
 
@@ -66,7 +66,7 @@ export function ReturnForm() {
       const books = await booksAPI.getAll();
       const book = books.find((b) => b.isbn === isbn.trim());
       if (!book) {
-        setResult({ type: "error", message: `Book not found: ISBN "${isbn}" does not match any resource in the catalog.` });
+        setResult({ type: "error", message: `Livre introuvable: l'ISBN "${isbn}" ne correspond a aucune ressource du catalogue.` });
         return;
       }
 
@@ -78,38 +78,39 @@ export function ReturnForm() {
                !l.date_retour_reelle
       );
       if (!loan) {
-        setResult({ type: "error", message: `No active loan found for this student with ISBN "${isbn}".` });
+        setResult({ type: "error", message: `Aucun emprunt actif trouve pour cet usager avec l'ISBN "${isbn}".` });
         return;
       }
 
       // Record the return
       const today = new Date().toISOString().split('T')[0];
       const studentName = `${student.nom} ${student.prenom}`;
-      const bookTitle = book.title || book.titre;
+      const bookTitle = book.titre;
       const isLate = today > loan.date_retour_prevue;
       const daysLate = isLate
         ? Math.ceil((new Date(today).getTime() - new Date(loan.date_retour_prevue).getTime()) / (1000 * 60 * 60 * 24))
         : 0;
 
-      // TODO: Update loan with return date via API
+      await loansAPI.return(loan.id, today);
+
       const details: Record<string, string> = {
-        "Student": `${studentName} (${student.email})`,
-        "Book": bookTitle,
+        "Usager": `${studentName} (${student.email})`,
+        "Livre": bookTitle,
         "ISBN": book.isbn,
-        "Loan Date": loan.date_emprunt,
-        "Expected Return": loan.date_retour_prevue,
-        "Actual Return": today,
-        "Status": "Returned",
+        "Date d'emprunt": loan.date_emprunt,
+        "Retour prevu": loan.date_retour_prevue,
+        "Retour effectif": today,
+        "Statut": "RETOURNE",
       };
-      if (isLate) details["Late"] = `${daysLate} day(s) overdue`;
+      if (isLate) details["Retard"] = `${daysLate} jour(s) de retard`;
 
       setResult({
         type: "success",
-        title: isLate ? "Return Registered (Late)" : "Return Registered Successfully",
+        title: isLate ? "Retour enregistre (en retard)" : "Retour enregistre avec succes",
         details,
       });
     } catch (error) {
-      setResult({ type: "error", message: `Error processing return: ${error instanceof Error ? error.message : "Unknown error"}` });
+      setResult({ type: "error", message: `Erreur lors du traitement du retour: ${error instanceof Error ? error.message : "Erreur inconnue"}` });
     } finally {
       setIsLoading(false);
     }
@@ -118,20 +119,20 @@ export function ReturnForm() {
   return (
     <div className="mx-auto w-full max-w-sm">
       <div className="rounded-xl border border-ink-100 border-t-4 border-t-brand-700 bg-white p-4 text-left shadow-soft">
-        <div className="font-serif text-2xl text-ink-900 md:text-4xl">Book Return</div>
+        <div className="font-serif text-2xl text-ink-900 md:text-4xl">Retour de livre</div>
         <p className="mt-2 text-sm text-ink-500 md:text-base">
-          Enter student and resource details to register return.
+          Saisissez les informations de l'usager et de la ressource pour enregistrer le retour.
         </p>
 
         <div className="mt-5 rounded-lg border border-ink-100 bg-surface-50 p-3">
           <div>
-            <label className="mb-2 block text-sm font-semibold text-ink-900">&#x25CE; Search Student/User</label>
+            <label className="mb-2 block text-sm font-semibold text-ink-900">&#x25CE; Rechercher un usager</label>
             <div className="relative">
               <input
                 value={userSearch}
                 onChange={(e) => setUserSearch(e.target.value)}
                 onFocus={() => userSearch.trim() && setShowDropdown(true)}
-                placeholder="Type email or name..."
+                placeholder="Tapez un e-mail ou un nom..."
                 className="w-full rounded-lg border border-ink-100 bg-white px-3 py-2 text-sm text-ink-900 outline-none focus:border-brand-500 md:text-base"
               />
               {showDropdown && filteredUsers.length > 0 && (
@@ -155,12 +156,12 @@ export function ReturnForm() {
             </div>
             {selectedUserId && (
               <div className="mt-2 rounded-lg bg-green-50 px-2 py-1.5 text-xs text-green-800">
-                ✓ Selected: {userSearch}
+                ✓ Selectionne: {userSearch}
               </div>
             )}
           </div>
           <div className="mt-3">
-            <label className="mb-2 block text-sm font-semibold text-ink-900">&#x25A1; Book ISBN</label>
+            <label className="mb-2 block text-sm font-semibold text-ink-900">&#x25A1; ISBN du livre</label>
             <input value={isbn} onChange={(e) => setIsbn(e.target.value)} placeholder="e.g. 978-0262033848"
               className="w-full rounded-lg border border-ink-100 bg-white px-3 py-2 text-sm text-ink-900 outline-none focus:border-brand-500 md:text-base" />
           </div>
@@ -170,7 +171,7 @@ export function ReturnForm() {
 
         <button type="button" onClick={handleValidate} disabled={isLoading}
           className="mt-6 w-full rounded-lg bg-brand-700 px-3 py-2.5 text-base font-semibold text-white shadow-soft hover:bg-brand-600 disabled:bg-ink-300 md:text-lg">
-          {isLoading ? "Processing..." : "Validate Return"}
+          {isLoading ? "Traitement..." : "Valider le retour"}
         </button>
       </div>
     </div>

@@ -1,5 +1,6 @@
 const supabase = require('../db');
 const ollama = require('ollama').default;
+const { findMatchingFaq, getAllFaq } = require('../models/faqModel');
 
 const OLLAMA_URL = process.env.OLLAMA_URL || 'http://localhost:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'llama3';
@@ -322,6 +323,19 @@ async function answerReservationProcess() {
 }
 
 /**
+ * Return all active FAQ entries (for the frontend quick-question chips)
+ */
+async function getFaq(req, res) {
+  try {
+    const faqs = await getAllFaq();
+    res.json({ data: faqs });
+  } catch (err) {
+    console.error('[AI/FAQ] Error:', err.message);
+    res.status(500).json({ message: 'Erreur lors du chargement des FAQ' });
+  }
+}
+
+/**
  * Main assistant query handler
  */
 async function queryAssistant(req, res) {
@@ -330,6 +344,17 @@ async function queryAssistant(req, res) {
 
     if (!question) {
       return res.status(400).json({ message: 'Question requise' });
+    }
+
+    // 0. Check FAQ table first — highest priority for predetermined Q&A
+    try {
+      const faqMatch = await findMatchingFaq(question);
+      if (faqMatch) {
+        return res.json({ answer: faqMatch.answer, source: 'faq', faq_id: faqMatch.id });
+      }
+    } catch (faqErr) {
+      // FAQ table may not exist yet; fall through to pattern matching
+      console.warn('[AI] FAQ lookup failed:', faqErr.message);
     }
 
     const normalized = normalize(String(question));
@@ -481,5 +506,6 @@ Comment puis-je vous aider?`;
 }
 
 module.exports = {
-  queryAssistant
+  queryAssistant,
+  getFaq,
 };

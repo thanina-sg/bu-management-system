@@ -1,20 +1,20 @@
 import type { Book } from "./api";
 
 export type BookCategory = string;
-export type BookStatus = "Available" | "Borrowed";
+export type BookStatus = "Disponible" | "Emprunte";
 
 export type Filters = {
   q: string;
-  category: "All Categories" | BookCategory;
-  status: "All Status" | BookStatus;
+  category: "Toutes categories" | BookCategory;
+  status: "Tous" | BookStatus;
 };
 
 export function applyFilters(books: Book[], filters: Filters) {
   const q = filters.q.trim().toLowerCase();
 
   return books.filter((b) => {
-    const title = (b.title || b.titre || "").toLowerCase();
-    const author = (b.author || b.auteur || "").toLowerCase();
+    const title = (b.titre || "").toLowerCase();
+    const author = (b.auteur || "").toLowerCase();
     const isbn = (b.isbn || "").toLowerCase();
     
     const matchesQ =
@@ -23,12 +23,12 @@ export function applyFilters(books: Book[], filters: Filters) {
       author.includes(q) ||
       isbn.includes(q);
 
-    const category = b.category || b.categorie;
+    const category = b.categorie;
     const matchesCategory =
-      filters.category === "All Categories" || category === filters.category;
+      filters.category === "Toutes categories" || category === filters.category;
 
-    const status = b.status || (b.disponible === false ? "Borrowed" : "Available");
-    const matchesStatus = filters.status === "All Status" || status === filters.status;
+    const status = b.disponible ? "Disponible" : "Emprunte";
+    const matchesStatus = filters.status === "Tous" || status === filters.status;
 
     return matchesQ && matchesCategory && matchesStatus;
   });

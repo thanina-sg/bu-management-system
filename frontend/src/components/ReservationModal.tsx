@@ -23,24 +23,24 @@ export function ReservationModal({
       // Get current user
       const user = auth.getStoredUser();
       if (!user) {
-        setError("You must be logged in to make a reservation.");
+        setError("Vous devez etre connecte pour reserver.");
         setIsLoading(false);
         return;
       }
 
       // Create reservation
       const reservation = await reservationsAPI.create({
-        studentId: user.id,
+        id_utilisateur: user.id,
         isbn,
       });
 
-      setQueuePosition(reservation.position_file || reservation.queuePosition || 0);
+      setQueuePosition(reservation.position_file || 0);
       setSubmitted(true);
     } catch (err) {
       if (err instanceof APIError) {
-        setError(err.message || "Failed to create reservation. Please try again.");
+        setError(err.message || "Impossible de creer la reservation. Veuillez reessayer.");
       } else {
-        setError("An unexpected error occurred. Please try again.");
+        setError("Une erreur inattendue est survenue. Veuillez reessayer.");
       }
     } finally {
       setIsLoading(false);
@@ -57,9 +57,9 @@ export function ReservationModal({
         {!submitted ? (
           <>
             <div className="border-b border-ink-100 px-5 py-4">
-              <h3 className="font-serif text-xl text-ink-900">Reserve Resource</h3>
+              <h3 className="font-serif text-xl text-ink-900">Reserver la ressource</h3>
               <p className="mt-1 text-xs text-ink-500">
-                This book is currently borrowed. You will be added to the waiting queue.
+                Ce livre est actuellement emprunte. Vous serez ajoute a la file d'attente.
               </p>
             </div>
 
@@ -76,7 +76,7 @@ export function ReservationModal({
               )}
 
               <p className="mt-4 text-xs text-ink-500">
-                You will be notified when this resource becomes available.
+                Vous serez notifie quand cette ressource sera disponible.
               </p>
             </div>
 
@@ -86,14 +86,14 @@ export function ReservationModal({
                 className="rounded-lg border border-ink-100 px-4 py-2 text-xs font-semibold text-ink-700 hover:bg-surface-50"
                 disabled={isLoading}
               >
-                Cancel
+                Annuler
               </button>
               <button
                 onClick={handleReserve}
                 disabled={isLoading}
                 className="rounded-lg bg-brand-700 px-4 py-2 text-xs font-semibold text-white hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isLoading ? "Processing..." : "Confirm Reservation"}
+                {isLoading ? "Traitement..." : "Confirmer la reservation"}
               </button>
             </div>
           </>
@@ -102,10 +102,10 @@ export function ReservationModal({
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-lg text-emerald-600">
               &#x2713;
             </div>
-            <h3 className="mt-4 font-serif text-xl text-ink-900">Reservation Confirmed</h3>
+            <h3 className="mt-4 font-serif text-xl text-ink-900">Reservation confirmee</h3>
             <p className="mt-2 text-sm text-ink-500">
-              You are <span className="font-semibold text-amber-600">#{queuePosition}</span> in the waiting
-              queue for this resource.
+              Vous etes <span className="font-semibold text-amber-600">#{queuePosition}</span> dans la file
+              d'attente pour cette ressource.
             </p>
             <div className="mt-4 rounded-lg border border-ink-100 bg-surface-50 p-3 text-left">
               <div className="text-xs font-semibold text-ink-900">{bookTitle}</div>
@@ -114,13 +114,13 @@ export function ReservationModal({
               </div>
             </div>
             <p className="mt-3 text-[11px] text-ink-500">
-              You will be notified when the resource becomes available.
+              Vous serez notifie quand la ressource sera disponible.
             </p>
             <button
               onClick={onClose}
               className="mt-5 rounded-lg bg-brand-700 px-6 py-2 text-xs font-semibold text-white hover:bg-brand-600"
             >
-              Done
+              Terminer
             </button>
           </div>
         )}

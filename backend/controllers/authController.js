@@ -65,7 +65,7 @@ const userLogout = async (req, res) => {
 
 const getCurrentUserData = async (req, res) => {
     try {
-        const userId = req.user?.id || req.body.userId || req.query.userId;
+        const userId = req.user?.id;
         if (!userId) throw new Error("User ID required");
 
         const user = await getCurrentUser(userId);

@@ -9,7 +9,7 @@ export function StudentLoginView({ onLogin }: { onLogin: (user: User) => void })
 
   const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) {
-      setError("Please fill in all fields.");
+      setError("Veuillez remplir tous les champs.");
       return;
     }
 
@@ -21,9 +21,9 @@ export function StudentLoginView({ onLogin }: { onLogin: (user: User) => void })
       onLogin(user);
     } catch (err) {
       if (err instanceof APIError) {
-        setError(err.message || "Login failed. Please try again.");
+        setError(err.message || "Connexion impossible. Veuillez reessayer.");
       } else {
-        setError("An unexpected error occurred. Please try again.");
+        setError("Une erreur inattendue est survenue. Veuillez reessayer.");
       }
     } finally {
       setIsLoading(false);
@@ -36,13 +36,13 @@ export function StudentLoginView({ onLogin }: { onLogin: (user: User) => void })
         <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-brand-700 text-xs font-semibold text-white">
           &#x25C9;
         </div>
-        <h3 className="mt-3 font-serif text-lg text-ink-900">Student Portal</h3>
-        <p className="mt-1 text-[11px] text-ink-500">Sign in to view your loans and reservations</p>
+        <h3 className="mt-3 font-serif text-lg text-ink-900">Portail etudiant</h3>
+        <p className="mt-1 text-[11px] text-ink-500">Connectez-vous pour voir vos emprunts et reservations</p>
       </div>
 
       <div className="mt-5 space-y-3">
         <div>
-          <label className="mb-1 block text-[10px] font-medium text-ink-500">Email</label>
+          <label className="mb-1 block text-[10px] font-medium text-ink-500">E-mail</label>
           <input
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -51,7 +51,7 @@ export function StudentLoginView({ onLogin }: { onLogin: (user: User) => void })
           />
         </div>
         <div>
-          <label className="mb-1 block text-[10px] font-medium text-ink-500">Password</label>
+          <label className="mb-1 block text-[10px] font-medium text-ink-500">Mot de passe</label>
           <input
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -71,12 +71,12 @@ export function StudentLoginView({ onLogin }: { onLogin: (user: User) => void })
           disabled={isLoading}
           className="w-full rounded-lg bg-brand-700 px-4 py-2.5 text-xs font-semibold text-white shadow-soft hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {isLoading ? "Signing in..." : "Sign In"}
+          {isLoading ? "Connexion..." : "Se connecter"}
         </button>
       </div>
 
       <div className="mt-4 border-t border-ink-100 pt-3">
-        <div className="text-[9px] font-semibold uppercase tracking-wide text-ink-500">Demo accounts (password: stu123)</div>
+        <div className="text-[9px] font-semibold uppercase tracking-wide text-ink-500">Comptes de demonstration (mot de passe: stu123)</div>
         <div className="mt-1.5 space-y-1 text-[10px] text-ink-500">
           <div>alice.dupont@uha.fr</div>
           <div>marc.leroy@uha.fr</div>

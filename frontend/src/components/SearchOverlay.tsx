@@ -14,7 +14,7 @@ export function SearchOverlay({ onClose }: { onClose: () => void }) {
         const data = await booksAPI.getAll();
         setAllBooks(data);
       } catch (err) {
-        console.error("Failed to load books for search", err);
+        console.error("Impossible de charger les livres pour la recherche", err);
       }
     };
     fetchBooks();
@@ -25,8 +25,8 @@ export function SearchOverlay({ onClose }: { onClose: () => void }) {
     q.length > 0
       ? allBooks.filter(
           (b) =>
-            (b.title || b.titre || "").toLowerCase().includes(q) ||
-            (b.author || b.auteur || "").toLowerCase().includes(q) ||
+            (b.titre || "").toLowerCase().includes(q) ||
+            (b.auteur || "").toLowerCase().includes(q) ||
             (b.isbn || "").toLowerCase().includes(q)
         )
       : [];
@@ -43,10 +43,10 @@ export function SearchOverlay({ onClose }: { onClose: () => void }) {
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search books by title, author, or ISBN..."
+            placeholder="Rechercher des livres par titre, auteur ou ISBN..."
             className="flex-1 bg-transparent text-sm text-ink-900 outline-none placeholder:text-ink-200"
           />
-          <button onClick={onClose} className="text-xs text-ink-500 hover:text-ink-700">ESC</button>
+          <button onClick={onClose} className="text-xs text-ink-500 hover:text-ink-700">FERMER</button>
         </div>
 
         {results.length > 0 && (
@@ -57,18 +57,18 @@ export function SearchOverlay({ onClose }: { onClose: () => void }) {
                   onClick={() => { nav(`/book/${b.id}`); onClose(); }}
                   className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left hover:bg-surface-50"
                 >
-                  {b.coverUrl
-                    ? <img src={b.coverUrl} alt="" className="h-10 w-7 rounded border border-ink-100 object-cover" />
-                    : <div className="flex h-10 w-7 items-center justify-center rounded border border-ink-100 bg-surface-100 text-[8px] text-ink-500">N/A</div>}
+                  {b.couverture_url
+                    ? <img src={b.couverture_url} alt="" className="h-10 w-7 rounded border border-ink-100 object-cover" />
+                    : <div className="flex h-10 w-7 items-center justify-center rounded border border-ink-100 bg-surface-100 text-[8px] text-ink-500">N/D</div>}
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold text-ink-900">{b.title || b.titre}</div>
-                    <div className="text-[11px] text-ink-500">{b.author || b.auteur}</div>
-                  </div>
-                  <span className={(b.status || "Available") === "Available"
-                    ? "rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700"
-                    : "rounded bg-rose-100 px-2 py-0.5 text-[10px] font-semibold text-rose-700"}>
-                    {b.status || b.disponible === false ? "Borrowed" : "Available"}
-                  </span>
+                     <div className="truncate text-sm font-semibold text-ink-900">{b.titre}</div>
+                     <div className="text-[11px] text-ink-500">{b.auteur}</div>
+                   </div>
+                   <span className={b.disponible
+                     ? "rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700"
+                     : "rounded bg-rose-100 px-2 py-0.5 text-[10px] font-semibold text-rose-700"}>
+                     {b.disponible ? 'Disponible' : 'Emprunte'}
+                   </span>
                 </button>
               </li>
             ))}
@@ -76,7 +76,7 @@ export function SearchOverlay({ onClose }: { onClose: () => void }) {
         )}
 
         {q.length > 0 && results.length === 0 && (
-          <div className="px-4 py-6 text-center text-sm text-ink-500">No results found.</div>
+          <div className="px-4 py-6 text-center text-sm text-ink-500">Aucun resultat trouve.</div>
         )}
       </div>
     </div>

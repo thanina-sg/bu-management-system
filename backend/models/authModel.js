@@ -9,6 +9,15 @@ const hashPassword = (password) => {
   return crypto.createHash('sha256').update(password).digest('hex');
 };
 
+const toUserDto = (user) => ({
+    id: user.id,
+    nom: user.nom,
+    prenom: user.prenom,
+    email: user.email,
+    role: user.role,
+    statut: user.statut,
+});
+
 // --- REGISTER ---
 const registerUser = async (email, nom, prenom, role, password) => {
     const passwordHash = hashPassword(password || `${email}:default`);
@@ -27,7 +36,7 @@ const registerUser = async (email, nom, prenom, role, password) => {
 
     if (dbError) throw dbError;
 
-    return data[0];
+    return toUserDto(data[0]);
 };
 
 // --- LOGIN STUDENT/TEACHER ---
@@ -41,14 +50,18 @@ const loginStudent = async (email, password) => {
 
     if (error || !user) throw new Error("Utilisateur non trouvé");
 
-    // For now, if user exists, grant access (in production, verify password hash)
+    const passwordHash = hashPassword(password || '');
+    if (user.password_hash !== passwordHash) {
+        throw new Error('Mot de passe invalide');
+    }
+
     const token = jwt.sign(
         { id: user.id, email: user.email, role: user.role },
         JWT_SECRET,
         { expiresIn: '24h' }
     );
 
-    return { user, token };
+    return { user: toUserDto(user), token };
 };
 
 // --- LOGIN STAFF (LIBRARIAN/ADMIN) ---
@@ -62,13 +75,18 @@ const loginStaff = async (email, password) => {
 
     if (error || !user) throw new Error("Accès refusé - utilisateur non autorisé");
 
+    const passwordHash = hashPassword(password || '');
+    if (user.password_hash !== passwordHash) {
+        throw new Error('Mot de passe invalide');
+    }
+
     const token = jwt.sign(
         { id: user.id, email: user.email, role: user.role },
         JWT_SECRET,
         { expiresIn: '24h' }
     );
 
-    return { user, token, role: user.role };
+    return { user: toUserDto(user), token, role: user.role };
 };
 
 // --- LOGOUT ---
@@ -87,7 +105,7 @@ const getCurrentUser = async (userId) => {
 
     if (error || !user) throw new Error("Utilisateur non trouvé");
 
-    return user;
+    return toUserDto(user);
 };
 
 module.exports = {
