@@ -127,13 +127,13 @@ export function HomePage() {
 
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
               {filtered.map((b) => (
-                <article key={b.id} className="rounded-lg border border-ink-100 bg-white p-3 shadow-soft">
-                  <div className="relative">
+                <article key={b.id} className="flex flex-col rounded-lg border border-ink-100 bg-white p-3 shadow-soft h-[420px]">
+                  <div className="relative flex-shrink-0">
                     <div
                       className={
                         b.disponible
-                          ? "absolute right-1 top-1 rounded bg-emerald-100 px-2 py-1 text-[10px] font-semibold text-emerald-700"
-                          : "absolute right-1 top-1 rounded bg-rose-100 px-2 py-1 text-[10px] font-semibold text-rose-700"
+                          ? "absolute right-1 top-1 rounded bg-emerald-100 px-2 py-1 text-[10px] font-semibold text-emerald-700 z-10"
+                          : "absolute right-1 top-1 rounded bg-rose-100 px-2 py-1 text-[10px] font-semibold text-rose-700 z-10"
                       }
                     >
                       {b.disponible ? 'Disponible' : 'Emprunte'}
@@ -143,28 +143,30 @@ export function HomePage() {
                       <img
                         src={b.couverture_url}
                         alt={b.titre}
-                        className="h-72 w-full rounded border border-ink-100 object-cover"
+                        className="h-56 w-full rounded border border-ink-100 object-cover"
                       />
                     ) : (
-                      <div className="flex h-72 items-center justify-center rounded border border-ink-100 bg-gradient-to-br from-brand-50 to-surface-100">
-                        <span className="text-6xl">📚</span>
+                      <div className="flex h-56 items-center justify-center rounded border border-ink-100 bg-gradient-to-br from-brand-50 to-surface-100">
+                        <span className="text-5xl">📚</span>
                       </div>
                     )}
                   </div>
 
-                   <div className="mt-4 text-[10px] font-semibold uppercase tracking-wide text-ink-500">
-                     {b.categorie}
-                   </div>
-                   <h3 className="mt-1 line-clamp-2 font-serif text-2xl leading-tight text-ink-900">{b.titre}</h3>
-                   <p className="mt-1 text-sm text-ink-500">{b.auteur}</p>
+                  <div className="flex flex-col flex-1 mt-3">
+                    <div className="text-[10px] font-semibold uppercase tracking-wide text-ink-500">
+                      {b.categorie}
+                    </div>
+                    <h3 className="mt-1 line-clamp-2 font-serif text-lg leading-tight text-ink-900">{b.titre}</h3>
+                    <p className="mt-1 text-xs text-ink-500 line-clamp-1">{b.auteur}</p>
 
-                  <div className="mt-4">
-                    <Link
-                      to={`/book/${b.id}`}
-                      className="inline-flex w-full items-center justify-center rounded bg-brand-700 px-4 py-2 text-xs font-semibold text-white hover:bg-brand-600"
-                    >
-                      Voir details
-                    </Link>
+                    <div className="mt-auto pt-3">
+                      <Link
+                        to={`/book/${b.id}`}
+                        className="inline-flex w-full items-center justify-center rounded bg-brand-700 px-4 py-2 text-xs font-semibold text-white hover:bg-brand-600"
+                      >
+                        Voir details
+                      </Link>
+                    </div>
                   </div>
                 </article>
               ))}

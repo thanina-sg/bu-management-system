@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { books as booksAPI, type Book } from "../lib/api";
 import { ReservationModal } from "../components/ReservationModal";
+import { BorrowModal } from "../components/BorrowModal";
 
 export function DetailsPage() {
   const { id } = useParams();
@@ -10,6 +11,7 @@ export function DetailsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showReservation, setShowReservation] = useState(false);
+  const [showBorrow, setShowBorrow] = useState(false);
 
   // Fetch book details on mount
   useEffect(() => {
@@ -102,6 +104,7 @@ export function DetailsPage() {
                 ) : (
                 <button
                   type="button"
+                  onClick={() => setShowBorrow(true)}
                   className="mt-4 w-full rounded bg-brand-700 px-4 py-2.5 text-xs font-semibold text-white hover:bg-brand-600"
                 >
                   Emprunter la ressource
@@ -174,6 +177,14 @@ export function DetailsPage() {
                bookTitle={book.titre || ''}
                isbn={book.isbn}
                onClose={() => setShowReservation(false)}
+             />
+          )}
+
+          {showBorrow && (
+              <BorrowModal
+               bookTitle={book.titre || ''}
+               isbn={book.isbn}
+               onClose={() => setShowBorrow(false)}
              />
           )}
         </>

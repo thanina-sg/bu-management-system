@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import { books as booksAPI, type Book } from "../../lib/api";
 import { BookStatusBadge } from "../StatusBadges";
 import { AddBookForm } from "./AddBookForm";
+import { ExempairesPanel } from "./ExemplairesPanel";
 import type { LoggedInRole } from "./types";
 
 export function BooksPanel({ role }: { role: LoggedInRole }) {
@@ -9,6 +10,8 @@ export function BooksPanel({ role }: { role: LoggedInRole }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editFields, setEditFields] = useState<{ disponible: boolean; localisation?: string; categorie?: string }>({ disponible: true, localisation: "", categorie: "" });
   const [toast, setToast] = useState<string | null>(null);
+  const [showCopiesModal, setShowCopiesModal] = useState(false);
+  const [selectedBook, setSelectedBook] = useState<Book | null>(null);
 
   // Fetch books on mount
   useEffect(() => {
@@ -130,6 +133,7 @@ export function BooksPanel({ role }: { role: LoggedInRole }) {
                     ) : (
                       <div className="flex gap-2">
                         <button onClick={() => startEdit(b)} className="rounded border border-ink-100 px-3 py-1 text-[10px] font-semibold text-ink-700 hover:bg-surface-50">Modifier</button>
+                        <button onClick={() => { setSelectedBook(b); setShowCopiesModal(true); }} className="rounded border border-brand-200 px-3 py-1 text-[10px] font-semibold text-brand-600 hover:bg-brand-50">Exemplaires</button>
                         {role === "Admin" && (
                           <button onClick={() => deleteBook(b.id || b.isbn)} className="rounded border border-rose-200 px-3 py-1 text-[10px] font-semibold text-rose-600 hover:bg-rose-50">Supprimer</button>
                         )}
@@ -172,6 +176,7 @@ export function BooksPanel({ role }: { role: LoggedInRole }) {
                 ) : (
                   <div className="flex gap-2">
                     <button onClick={() => startEdit(b)} className="rounded border border-ink-100 px-3 py-1 text-[10px] font-semibold text-ink-700 hover:bg-surface-50">Modifier</button>
+                    <button onClick={() => { setSelectedBook(b); setShowCopiesModal(true); }} className="rounded border border-brand-200 px-3 py-1 text-[10px] font-semibold text-brand-600 hover:bg-brand-50">Exemplaires</button>
                     {role === "Admin" && <button onClick={() => deleteBook(b.id || b.isbn)} className="rounded border border-rose-200 px-3 py-1 text-[10px] font-semibold text-rose-600 hover:bg-rose-50">Supprimer</button>}
                   </div>
                 )}
@@ -180,6 +185,17 @@ export function BooksPanel({ role }: { role: LoggedInRole }) {
           ))}
         </div>
       </div>
+
+      {showCopiesModal && selectedBook && (
+        <ExempairesPanel
+          bookIsbn={selectedBook.isbn}
+          bookTitle={selectedBook.titre}
+          onClose={() => {
+            setShowCopiesModal(false);
+            setSelectedBook(null);
+          }}
+        />
+      )}
     </div>
   );
 }

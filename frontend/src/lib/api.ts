@@ -214,6 +214,10 @@ export const books = {
     return fetchAPI<Book[]>(`/books/${isbn}/recommendations`);
   },
 
+  async getCopies(isbn: string): Promise<any[]> {
+    return fetchAPI<any[]>(`/books/${isbn}/copies`);
+  },
+
   async create(data: {
     titre: string;
     auteur: string;

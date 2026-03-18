@@ -1,13 +1,22 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, Outlet } from "react-router-dom";
 import { TopNavLink } from "./TopNavLink";
 import { SearchOverlay } from "./SearchOverlay";
 import { AccountPanel } from "./AccountPanel";
 import { ChatWidget } from "./ChatWidget";
+import { auth, type User } from "../lib/api";
 
 export function AppShell() {
   const [showSearch, setShowSearch] = useState(false);
   const [showAccount, setShowAccount] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    setUser(auth.getStoredUser());
+  }, []);
+
+  // Show librarian portal only for staff (not for students/teachers)
+  const isStaff = user && (user.role === "BIBLIOTHECAIRE" || user.role === "ADMINISTRATEUR");
 
   return (
     <div className="min-h-screen bg-[#f3f5f9]">
@@ -22,7 +31,7 @@ export function AppShell() {
 
           <nav className="hidden items-center gap-6 sm:flex">
             <TopNavLink to="/">Catalogue</TopNavLink>
-            <TopNavLink to="/librarian">Portail personnel</TopNavLink>
+            {isStaff && <TopNavLink to="/librarian">Portail personnel</TopNavLink>}
           </nav>
 
           <div className="flex items-center gap-3 text-ink-500">

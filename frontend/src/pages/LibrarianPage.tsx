@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { RoleBadge } from "../components/StatusBadges";
 import { StaffLoginForm } from "../components/librarian/StaffLoginForm";
 import { LoanForm } from "../components/librarian/LoanForm";
@@ -11,6 +12,7 @@ import { books as booksAPI, loans as loansAPI, reservations as reservationsAPI, 
 import type { LoggedInRole, PortalView } from "../components/librarian/types";
 
 const LIBRARIAN_TABS: { key: PortalView; label: string }[] = [
+  { key: "overview", label: "Overview" },
   { key: "loan", label: "Nouvel emprunt" },
   { key: "return", label: "Retour" },
   { key: "reservations", label: "Reservations" },
@@ -18,6 +20,7 @@ const LIBRARIAN_TABS: { key: PortalView; label: string }[] = [
 ];
 
 const ADMIN_TABS: { key: PortalView; label: string }[] = [
+  { key: "overview", label: "Overview" },
   { key: "users", label: "Utilisateurs" },
   { key: "librarians", label: "Bibliothecaires" },
   { key: "books", label: "Livres" },
@@ -25,6 +28,7 @@ const ADMIN_TABS: { key: PortalView; label: string }[] = [
 ];
 
 export function LibrarianPage() {
+  const navigate = useNavigate();
   const [view, setView] = useState<PortalView>("login");
   const [loggedInRole, setLoggedInRole] = useState<LoggedInRole>("Librarian");
   const [loggedInName, setLoggedInName] = useState("");
@@ -33,6 +37,15 @@ export function LibrarianPage() {
   const [reservationsList, setReservationsList] = useState<any[]>([]);
   const [usersList, setUsersList] = useState<any[]>([]);
 
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    localStorage.removeItem("authToken");
+    setView("login");
+    setLoggedInRole("Librarian");
+    setLoggedInName("");
+    navigate("/");
+  };
+
   // Restore auth from localStorage on mount
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
@@ -40,6 +53,13 @@ export function LibrarianPage() {
     if (savedUser && savedToken) {
       try {
         const user = JSON.parse(savedUser);
+        
+        // Redirect non-staff users away from librarian portal
+        if (user.role !== 'BIBLIOTHECAIRE' && user.role !== 'ADMINISTRATEUR') {
+          navigate("/");
+          return;
+        }
+        
         const roleMap: Record<string, LoggedInRole> = {
           'BIBLIOTHECAIRE': 'Librarian',
           'ADMINISTRATEUR': 'Admin',
@@ -47,13 +67,13 @@ export function LibrarianPage() {
         const uiRole = roleMap[user.role] || 'Librarian';
         setLoggedInRole(uiRole);
         setLoggedInName(`${user.prenom || ''} ${user.nom || ''}`.trim() || user.email);
-        // Set appropriate view based on role
-        setView(uiRole === "Admin" ? "users" : "loan");
+        // Set overview as default view
+        setView("overview");
       } catch (err) {
         console.error("Failed to restore auth:", err);
       }
     }
-  }, []);
+  }, [navigate]);
 
   // Fetch dashboard data when user logs in
   useEffect(() => {
@@ -84,19 +104,26 @@ export function LibrarianPage() {
         onLogin={(role, name) => {
           setLoggedInRole(role);
           setLoggedInName(name);
-          setView(role === "Admin" ? "users" : "loan");
+          setView("overview");
         }}
       />
     );
   }
 
   const tabs = loggedInRole === "Admin" ? ADMIN_TABS : LIBRARIAN_TABS;
+  
+  // Filter out users tabs for librarians (only show for Admin)
+  const displayTabs = loggedInRole === "Librarian" 
+    ? tabs.filter(tab => !["users", "students", "librarians"].includes(tab.key))
+    : tabs;
 
   const subtitles: Record<Exclude<PortalView, "login">, string> = {
+    overview: "Aperçu du tableau de bord",
     loan: "Enregistrer un nouvel emprunt",
     return: "Enregistrer un retour",
     reservations: "Voir et gerer toutes les reservations",
     books: loggedInRole === "Admin" ? "Gerer le catalogue de livres" : "Consulter et gerer le catalogue",
+    exemplaires: "Consulter tous les exemplaires groupes par livre",
     users: "Gerer les etudiants et enseignants",
     students: "Gerer les etudiants et enseignants",
     librarians: "Gerer le personnel de bibliotheque",
@@ -105,8 +132,14 @@ export function LibrarianPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-12">
       <div className="text-center">
-        <div className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-full bg-surface-200 text-xl text-brand-700">
-          ⎘
+        <div className="flex items-center justify-center">
+          <button
+            onClick={handleLogout}
+            title="Se déconnecter"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-rose-100 text-lg text-rose-600 hover:bg-rose-200 transition-colors"
+          >
+            ✕
+          </button>
         </div>
         <h1 className="mt-4 font-serif text-4xl tracking-tight text-ink-900 md:text-6xl">
           {loggedInRole === "Admin" ? "Portail administrateur" : "Portail bibliothecaire"}
@@ -118,7 +151,7 @@ export function LibrarianPage() {
         <p className="mt-2 text-lg text-ink-500 md:text-3xl">{subtitles[view]}</p>
 
         <div className="mt-6 inline-flex flex-wrap justify-center rounded-lg border border-ink-100 bg-white p-1 shadow-soft">
-          {tabs.map((tab) => (
+          {displayTabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setView(tab.key)}
@@ -135,7 +168,9 @@ export function LibrarianPage() {
       </div>
 
       <div className="mt-8">
-        <DashboardCards role={loggedInRole} books={booksList} loans={loansList} reservations={reservationsList} users={usersList} />
+        {view === "overview" && (
+          <DashboardCards role={loggedInRole} books={booksList} loans={loansList} reservations={reservationsList} users={usersList} />
+        )}
       </div>
 
       <div className="mt-8 flex justify-center">
@@ -150,14 +185,8 @@ export function LibrarianPage() {
 
       <div className="mt-6 text-center">
         <button
-          onClick={() => { 
-            localStorage.removeItem("user");
-            localStorage.removeItem("authToken");
-            setView("login"); 
-            setLoggedInRole("Librarian"); 
-            setLoggedInName(""); 
-          }}
-          className="text-xs font-semibold text-ink-500 hover:text-ink-700"
+          onClick={handleLogout}
+          className="text-xs font-semibold text-ink-500 hover:text-rose-600 transition-colors"
         >
           Se deconnecter
         </button>
